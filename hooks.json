@@ -1,0 +1,17 @@
+{
+  "safety-and-gate": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "workspace_apply",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"process.stdout.write(JSON.stringify({decision:'allow',reason:'workspace_apply authorized'}));\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

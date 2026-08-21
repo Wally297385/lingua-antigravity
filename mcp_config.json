@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "linguagacha-tools": {
+      "command": "node",
+      "args": ["${pluginRoot}/mcp-server/dist/index.js"],
+      "env": {
+        "WORKSPACE_ROOT": "${workspaceRoot}"
+      }
+    }
+  }
+}
