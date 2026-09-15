@@ -1,15 +1,20 @@
 {
   "name": "lingua-antigravity",
-  "version": "1.1.0",
-  "description": "LinguaGacha Agent 模式在 Antigravity 上的完整移植套件，提供虚构作品创作/翻译宪章、傲娇搭档人设、9 大领域技能与工作区事务沙箱工具。",
-  "author": "Antigravity Pair Programmer",
+  "version": "2.0.0",
+  "description": "LinguaGacha Agent 模式在 Antigravity 2.0 上的完整原生移植套件，提供虚构作品创作/翻译宪章、傲娇搭档人设、8 大领域技能与原生两阶段安全授权工作流。",
+  "author": {
+    "name": "Lingua-Antigravity Team"
+  },
+  "repository": "https://github.com/qwased/lingua-antigravity",
   "license": "MIT",
   "keywords": [
     "lingua-gacha",
     "antigravity",
+    "antigravity-2",
     "translation",
     "creative-writing",
-    "mcp-server",
-    "glossary"
+    "glossary",
+    "subagents",
+    "roleplay"
   ]
 }

@@ -1,0 +1,37 @@
+[
+  {
+    "src": "絢瀬絵里",
+    "dst": "绚濑绘里",
+    "info": "女性，《Love Live!》μ's 成员，音乃木坂学院学生会长（萌娘百科标准条目名）",
+    "regex": false,
+    "case_sensitive": false
+  },
+  {
+    "src": "エミリア",
+    "dst": "爱蜜莉雅",
+    "info": "女性，《Re:从零开始的异世界生活》女主角，银发半精灵（萌娘百科标准条目名）",
+    "regex": false,
+    "case_sensitive": false
+  },
+  {
+    "src": "エクスプロージョン",
+    "dst": "爆裂魔法",
+    "info": "魔法，《为美好的世界献上祝福！》惠惠的招牌魔法（Explosion）",
+    "regex": false,
+    "case_sensitive": false
+  },
+  {
+    "src": "ダイゼンガー",
+    "dst": "大前卡",
+    "info": "机体名，《超级机器人大战OG》曾伽专属超军神特机（Dygenguar / 武神装攻）",
+    "regex": false,
+    "case_sensitive": false
+  },
+  {
+    "src": "ラプター・ガイスト",
+    "dst": "猛禽·幽灵",
+    "info": "战术机名，【本书特有】影镜部队运用EOT/原生种特殊技术深度魔改的特装型F-22A战术机",
+    "regex": false,
+    "case_sensitive": false
+  }
+]

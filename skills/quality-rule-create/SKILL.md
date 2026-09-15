@@ -1,25 +1,46 @@
 ---
 name: quality-rule-create
-description: 当需要通过扫描当前工程发现新术语、专有名词、重复格式、控制结构或样式模式，并为它们建立术语表或文本保护规则时使用；提取的术语表严格遵循 LinguaGacha 5 字段规范（参考露西.json/露西.xlsx）。
+description: 当需要通过扫描当前工程发现新术语、专有名词、重复格式、控制结构或样式模式，并为它们建立术语表或文本保护规则时使用；提取的术语表严格遵循 LinguaGacha 5 字段规范。
 ---
 
-# 质量规则创建
+# 质量规则创建 (@skill(quality-rule-create))
 
-以 `@skill(quality-rule-workflow)` 为必读工作流。
+以 `@skill(quality-rule-workflow)` 为核心工作流引擎，以 `@skill(glossary-rules)` 为五字段数据契约，以 `@skill(acg-glossary-verification)` 为外部权威仲裁。
 
-## 入口行为与格式契约
+---
 
-1. 确定本次创建允许的种类（`glossary`, `text_preserve`）和目标范围。
-2. 提取或创建术语规则时，必须遵循 LinguaGacha 标准五字段格式（参考 `露西.json` / `露西.xlsx` 范本）：
-   - `src`: 原文
-   - `dst`: 译文
-   - `info`: 注释说明（包含角色性别/实体类型/所属/消歧条件，不可缺失）
-   - `regex`: 固定为 `false`
-   - `case_sensitive`: 默认为 `false`
-3. 调用 `quality-rule-workflow` 的共享工作流：
-   - 模式设为 `mode: create`。
-   - 读取工程快照，根据初始目标或全工程抽样生成 seed probes。
-   - 逐组核验候选对象并收集派生事实。
-   - 经历收敛判定后生成拟创建条目的 JSONL changes（写入 `changes/glossary/creates.jsonl`）。
-   - 获得搭档明确授权后，调用 `workspace_apply` 提交新建规则。
-   - 可通过 `workspace.exportGlossary(...)` 或 `glossary_export` 工具直接导出为可供 LinguaGacha 直接导入的 `.json` 或 `.xlsx` 文件。
+## 1. 入口行为与两阶段流程（安全红线）
+
+1. **范围确定**：确定本次创建允许的种类（`glossary`, `text_preserve`）和目标文本范围。
+2. **术语契约**：严格遵循 LinguaGacha 标准五字段格式（`src`, `dst`, `info`, `regex: false`, `case_sensitive: false`）。
+3. **分析与呈现（写入确认阶段）**：
+   - 提取并校准候选专名与保护规则；
+   - 强制核验正文字面量命中情况，剔除幽灵词条；
+   - 向搭档呈现拟新增词条清单、分类统计与重点范例，请求写入授权。
+4. **显式授权后导出**：获得搭档明确确认后，调用原生工具或导出工具链写入目标规则文件。
+
+---
+
+## 2. EPUB / 小说专名挖掘工具链
+
+当输入源为 `.epub` 文件或长篇小说纯文本时，直接调用内置工具链脚本：
+`scripts/epub_glossary_toolkit.py`（已内置 Windows UTF-8 管道安全配置）。
+
+- **四步流水线概览**：
+  1. `extract`（全本抽取纯文本）
+  2. `mine`（实体挖掘与语境画像切片）
+  3. `verify`（字面量校验与幽灵拦截）
+  4. `export`（标准化导出 JSON 与带样式 XLSX）
+- 完整子命令参数与批处理脚本示例参见：**[工具链命令行手册](./references/cli_manual.md)**。
+
+---
+
+## 3. 核心规约与硬红线
+
+### 3.1 全称与简称联动机制
+- **核心全称**（如 `ノエル・フィン・デンペロン`）：承载完整的背景设定、性别、身份归属、能力与关系链。
+- **高频简称**（如 `ノエル`）：承载明确的消歧指令与指向关系（如“男性，主角诺艾尔的常用简称”），防止长篇机翻时简称漏翻或语义漂移。
+
+### 3.2 100% 真实字面命中覆盖
+- 严禁凭主观经验推导原著未明确出现的高阶组合词（如原文仅有“伯爵”与“伯爵领”，严禁推导出未使用的“伯爵家”）。
+- 所有拟定词条的 `src` 必须通过 `verify` 命令或 `--verify-text` 校验，未命中项一律剔除。

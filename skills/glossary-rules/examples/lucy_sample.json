@@ -1,0 +1,23 @@
+[
+  {
+    "src": "ルーシィ",
+    "dst": "露西",
+    "info": "主角的伙伴宠物（粉色粘液生物，魔法少女的吉祥物），可变身为女性魔法少女",
+    "regex": false,
+    "case_sensitive": false
+  },
+  {
+    "src": "天神川恵梨香",
+    "dst": "天神川惠梨香",
+    "info": "女性，伊丽莎白（枪骑兵·伊丽莎白）的本名",
+    "regex": false,
+    "case_sensitive": false
+  },
+  {
+    "src": "イア",
+    "dst": "咿呀",
+    "info": "邪神系存在的呼喊/口癖；仅在该词独立作感叹呼喊时采用本条（如「イア！イア！ルーシィ！」），其他词按普通词翻译",
+    "regex": false,
+    "case_sensitive": false
+  }
+]

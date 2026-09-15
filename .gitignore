@@ -1,8 +1,16 @@
-node_modules/
-dist/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Logs & System
 *.log
 .DS_Store
+Thumbs.db
+
+# Backups & Runtime State
 .backup/
-changes/
 scratch/
 task/

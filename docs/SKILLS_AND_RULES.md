@@ -1,6 +1,6 @@
 # 技能与规则全解手册 (Skills & Rules Manual)
 
-本文档系统性说明 `lingua-Antigravity` 套件中包含的 **核心规则 (Rules)** 与 **9 大领域技能 (Skills)** 的设计理念、业务契约、交互格式与执行流。
+本文档系统性说明 `lingua-Antigravity` 套件中包含的 **核心规则 (Rules)** 与 **8 大领域技能 (Skills)** 的设计理念、业务契约、交互格式与执行流。
 
 ---
 
@@ -49,56 +49,50 @@
 
 ---
 
-## 二、 9 大领域技能体系 (Domain Skills)
+## 二、 领域技能体系 (Domain Skills)
 
 ```text
 skills/
-├── agent-charter/             # [核心] 最高层任务与准则宪章
-├── translation-review/        # [翻译] 译文审查、校对与自适应发现
-├── quality-rule-workflow/     # [质量] 质量规则 (术语/文本保护/替换) 共享工作流
-├── quality-rule-create/       # [质量] 质量规则创建与挖掘
-├── quality-rule-review/       # [质量] 质量规则冲突审查与合并
+├── translation-review/        # [翻译] 译文审查、校对与并发自适应发现
+├── quality-rule-workflow/     # [质量] 质量规则 (创建与审查) 统一工作流引擎
+├── quality-rule-create/       # [质量] 质量规则创建、全称简称联动与挖掘工具链
+├── acg-glossary-verification/ # [核验] 泛二次元专名权威数据库核验与消歧
 ├── roleplay/                  # [创作] 原作世界与人物角色扮演、状态机演进
 ├── fiction-rules/             # [创作] 虚构故事创作通用准则
-├── glossary-rules/            # [规则] 术语表判定规则与表达依据
+├── glossary-rules/            # [规则] 术语表 5 字段标准判据单一权威源
 └── text-preserve-rules/       # [规则] 文本保护与正则判定依据
 ```
 
 ---
 
-### 1. `agent-charter` (最高层任务宪章)
-- **定位**：所有任务共同适用的最高层宪章，执行任何创作或翻译任务前必须具备的顶层约束。
-- **作用**：确保在虚构作品处理中，不出现任何违反创作自由度契约的判定。
+### 1. `translation-review` (译文审校与并发自适应发现)
+- **定位**：面向工程文本的译文质量把关系统。
+- **核心流程**：
+  1. 提取警告项（`GLOSSARY`, `TEXT_PRESERVE`, `KANA/HANGEUL`, `SIMILARITY`）作为首批种子。
+  2. 对无警告区域分散抽样，执行自适应诊断（代词、语气、专名一致性等）。
+  3. 支持调用 Antigravity 原生子代理（`invoke_subagent`）按分卷并发审校。
+  4. 整理拟修改项进入【写入确认】阶段，获得搭档明确授权后原子更新。
+  5. 执行一次独立长尾残差抽样（Residual Check）收敛任务。
 
-### 2. `translation-review` (译文审校与自适应发现)
-- **工作流**：
-  1. `workspace_load` 确定当前工程的译文总量与基准。
-  2. 提取警告项（`GLOSSARY`, `TEXT_PRESERVE`, `KANA/HANGEUL`, `SIMILARITY`）作为首批种子。
-  3. 对无警告区域分散抽样，执行自适应诊断信号（代词、说话人语气、专名一致性等）。
-  4. 按互斥批次形成处理建议（变更 / 保留 / 未决），并进入 `写入确认` 阶段。
-  5. 获得授权后调用 `workspace_apply` 原子提交。
-  6. 执行一次独立长尾残差抽样（Residual Check），冻结集合并核对最终结果。
-
-### 3. `quality-rule-workflow` (质量规则共享工作流)
-- **定位**：`quality-rule-create` 与 `quality-rule-review` 的底层状态机引擎。
+### 2. `quality-rule-workflow` (质量规则统一工作流引擎)
+- **定位**：`quality-rule-create` 的底层通用引擎，兼具规则创建与既有规则审查（Review）全生命周期。
 - **核心机制**：
-  - **Probe (探测器)**：在数据集中执行的程序化扫描方向。
-  - **Fact (事实账本)**：待判定的专有名词、文本保护项事实，记录 `decision` 与 `action`。
-  - **结构聚类 (`workspace.groupQualityRuleEntries`)**：将相似词形聚类为最多 16 条的审查组。
-  - **公共词根提取 (`workspace.deriveCommonLiteralRoots`)**：推导合并候选。
-  - **零增量闭合**：直到最新一代的探测器产生零新事实、零变更事实、零新探测器时方可收敛。
+  - **语义聚类**：利用大模型内化语义理解聚合关联词条与同系列实体。
+  - **全称与简称联动**：全称承载完整设定与性别；高频简称承载消歧指向。
+  - **100% 真实命中覆盖**：严格拦截脑补幽灵词条。
+  - **两阶段写入授权**：先汇报统计与示例，搭档确认后导出。
 
-### 4. `quality-rule-create` & `quality-rule-review`
-- **`quality-rule-create`**：从原文和译文中自适应挖掘新术语、专有名词、文本保护定界符，并建立规则。
-- **`quality-rule-review`**：对已有术语表和规则进行全量冲突检测、冗余合并与无效项清理。
+### 3. `quality-rule-create` & `acg-glossary-verification`
+- **`quality-rule-create`**：搭载内置的 `epub_glossary_toolkit.py` 工具链，支持 EPUB 纯文本提取、模式挖掘与标准五字段导出。
+- **`acg-glossary-verification`**：泛二次元专有名词权威核验，遵循“知识库优先 + 按需定向检索”原则，高效仲裁译名冲突。
 
-### 5. `roleplay` (故事角色扮演与世界模拟)
+### 4. `roleplay` (故事角色扮演与世界模拟)
 - **定位**：允许搭档进入工程小说/剧本的世界扮演指定角色，共同演进故事分支。
 - **状态事实 (`task/roleplay/state.json`)**：
   - 维护唯一持久化状态：`player`（玩家外显锚点）、`narration`（视角/长度/偏好）、`scene`（当前时空与压力）、`actors`（在场人物锚点 `presence/voice/behavior` 与认知 `current`）、`relations`（方向性关系）、`world_threads`（后台事件）、`branch_facts`（分支因果）。
 - **行动灵感 (`💡 行动灵感`)**：每回合正文后提供 3~4 项符合人物当下处境的具体行动候选，搭档可直接回复序号、修改或自由输入。
 
-### 6. `fiction-rules`, `glossary-rules`, `text-preserve-rules`
+### 5. `fiction-rules`, `glossary-rules`, `text-preserve-rules`
 - **`fiction-rules`**：虚构故事创作的节奏控制、感官描写、对话密度与场景交接规范。
 - **`glossary-rules`**：术语表条目的确立资格、大小写敏感性、多义词消歧与条件化应用判据。**严格遵循 LinguaGacha 标准 5 字段规范**（`src`, `dst`, `info`, `regex: false`, `case_sensitive: false`，完全兼容 `露西.json` 与 `露西.xlsx`）。
 - **`text-preserve-rules`**：控制符、占位符（`{0}`, `%s`）、Ruby 标签、BBCode 等格式的保护规则。
