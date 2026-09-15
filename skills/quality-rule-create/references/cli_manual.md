@@ -1,4 +1,4 @@
-# EPUB / 小说专名挖掘工具链命令行手册 (CLI Manual v2.1)
+# EPUB / 小说专名挖掘工具链命令行手册 (CLI Manual v2.2)
 
 本文档为 `@skill(quality-rule-create)` 的核心工具参考，详细说明内置脚本 `scripts/epub_glossary_toolkit.py` 的子命令、参数选项、一键流水线与 `glossary/` 产物规约。
 
@@ -7,10 +7,15 @@
 ## 1. 核心红线与环境安全
 
 1. **产物存放路径硬红线**：
-   - 所有生成的纯文本、挖掘候选集 JSON、全简称消歧配置与导出的 XLSX/JSON 术语表，**默认且必须存放于工程根目录的 `glossary/` 文件夹**。
+   - 所有生成的纯文本、挖掘候选集 JSON、初稿草案、全简称消歧配置与导出的 XLSX/JSON 术语表，**默认且必须存放于工程根目录的 `glossary/` 文件夹**。
    - 工具脚本已默认内置自动路径规约（`[GLOSSARY DIRECTORY]`），防止中间产物散落。
-2. **环境与管道防御**：
-   - 脚本内部已自动集成 Windows UTF-8 管道安全配置（`sys.stdout.reconfigure(encoding='utf-8')`），彻底杜绝控制台 GBK 引起的特殊标点或日文字符崩溃。
+2. **环境与管道防御规范 (Windows 编码加固)**：
+   - **推荐命令前缀**：在 Windows pwsh 下运行 Python 任务时，前置注入环境变量：
+     ```powershell
+     $env:PYTHONUTF8=1; python <script_path> ...
+     ```
+   - **管道与数据流契约**：脚本内部已集成控制台 UTF-8 管道保护。严禁使用 `replace` 掩耳盗铃静默吞损日文字符；禁止通过控制台打印大段日文，统一通过落盘的标准 JSON 文件进行数据传递。
+   - **数据契约归一化 (Surface Contract)**：所有挖掘条目统一输出 `{ "surface", "count", "snippets", "category" }`，消灭下游字段取值分歧。
    - 零第三方重型依赖，仅依赖 Python 3.10+ 标准库（`zipfile`, `re`, `json`, `argparse`）与基础轻量库（`openpyxl` 仅导出 Excel 时需要）。
 
 ---
@@ -20,14 +25,14 @@
 对于长篇轻小说（如百万字 Web 版或 EPUB 文库版），推荐优先使用一键流水线子命令：
 
 ```powershell
-python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py pipeline <input.epub> [-o <out_dir>] [--min-freq 2]
+$env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py pipeline <input.epub> [-o <out_dir>] [--min-freq 2]
 ```
 
-### 自动化执行链
+### 自动化执行链 (v2.2)
 1. **全本抽取 (`extract`)**：解析 EPUB OPF 元数据，按自然数章节精准排序，清洗 HTML 标签与 Ruby 注音假名，导出纯文本至 `glossary/extracted_text.txt`；
-2. **深度挖掘 (`mine`)**：执行片假名复合词、日汉混合中点全名、书名号设定词、ACG 后缀（地理/组织/爵位/系统）及人名尊称特征聚类，自动过滤泛词黑名单（如“知らない家”、“新しい村”）；
-3. **联动消歧 (`link`)**：自动扫描中点贵族/西方全名与高频简称的频次关联，生成 `Suggested Pairs` 消歧候选模板；
-4. **字面量校验 (`verify`)**：强制比对原著字面量出现频次，剔除 0 命中项，保存 `glossary/glossary_candidates.json`；
+2. **深度挖掘与子串抑制 (`mine` & `prune`)**：执行片假名复合词、日汉混合中点全名、书名号设定词、ACG 后缀及人名尊称聚类；内置**算法级子串包含抑制（Sub-string Containment Pruning）**，自动剔除包含率 $\ge 95\%$ 的词尾机械切片（彻底杜绝类似 `シャーベリア` 产生假简称 `リア` 的问题）；
+3. **独立简称联动 (`link`)**：精准统计片假名作为独立词的频次，生成 `Suggested Pairs` 消歧候选模板；
+4. **原生五字段草案直出 (`draft`)**：自动组装开箱即用的 LinguaGacha 五字段标准草案 `glossary/glossary_draft_entries.json`，用户与 Agent 无需手写临时脚本转换；
 5. **审阅报告 (`report`)**：自动生成结构化 Markdown 报告 `glossary/glossary_pipeline_report.md`，供搭档一览全局。
 
 ---

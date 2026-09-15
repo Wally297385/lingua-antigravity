@@ -5,6 +5,32 @@
 
 ---
 
+## [2.2.0] - 2026-09-15
+
+### 🚀 新增特性 (Features)
+- **原生五字段草案自动组装器 (Draft Generator)**：
+  - 流水线新增原生直出 `glossary/glossary_draft_entries.json`（完全符合 LinguaGacha 五字段标准契约）；
+  - 依据实体类别自动预填规范消歧说明模板（中点全称、联动简称、书名号核心设定、高频专名），彻底免除下游手动/即席编写脚本转换的繁琐步骤。
+- **算法级“子串包含抑制”（Sub-string Containment Pruning）**：
+  - 引入基于包含率与独立边界的伴生切片过滤算法（$\text{Contained Ratio} \ge 95\%$ 且独立语法频次 $< 2$ 强制剔除）；
+  - 彻底根治高频专名内部机械切片（如 `シャーベリア` 词尾 `リア`）被误报为 365 次高频简称的假阳性缺陷。
+- **OPF 原版元数据锚定与两级垂直检索规程**：
+  - 在 `@skill(acg-glossary-verification)` 建立两级检索路由：第一级强制读取 EPUB `content.opf` 提取原作者与法定日文标题；第二级垂直定向检索 Kakuyomu / 小说家になろう 官方专栏，彻底杜绝中文机翻书名全网泛搜失真。
+
+### 🛡️ Windows 编码全链路防御加固 (Encoding & Pipeline Hardening)
+- **根除静默吞损漏洞**：移除原有 `errors='replace'` 隐式吞字缺陷，杜绝控制台将日文假名与特殊字符静默降级为问号 `?`；
+- **环境安全注入约定**：在 CLI 手册中明确加入 `$env:PYTHONUTF8=1` 环境前置推荐，阻断 Windows 11 GBK (CP936) 默认代码页对 Python 任务的冲击；
+- **日文同形平假名形态学归一**：增加对片假名中混入同形平假名（`べ`、`り`、`へ`）的自动形态修正与中点人名严格边界断言，修复因假名混用导致的断词切片。
+
+### ⚡ 优化与契约统一 (Refactoring & Contract Unification)
+- **数据契约归一化 (Surface Contract)**：
+  - 挖掘结果 `glossary_candidates.json` 所有分类统一收敛为 `{ "surface", "count", "snippets", "category" }`，彻底终结 `name` / `word` / `term` 碎片化取值；
+  - 全简称联动建议与下游流水线全链路对齐 Surface 契约。
+- **手册文档同步**：
+  - 更新 `references/cli_manual.md` 与 `references/source_matrix.md` 至 v2.2 规范。
+
+---
+
 ## [2.1.0] - 2026-09-15
 
 ### 🚀 新增特性 (Features)
