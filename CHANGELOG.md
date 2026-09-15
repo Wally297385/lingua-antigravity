@@ -3,6 +3,31 @@
 本项目的所有显著变更均记录于此文档。
 版本号遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) 规范。
 
+## [2.4.0] - 2026-09-15
+
+### 🚀 核心特性与工作流升级 (Workflow & Tooling Enhancements)
+- **基于 Levenshtein 编辑距离与假名倒置的疑似笔误智能聚类 (Typo & Inversion Clustering)**：
+  - 纯 Python 零外部依赖实现轻量级 Levenshtein 编辑距离与双向词素倒置识别；
+  - 自动发现全名编辑距离 $\le 1$ 且频次显著更低的疑似作者笔误异体字（如 `フォア・プレット` vs `フォア・プラット`），以及词素倒置（如 `ヴギラド・アリエ` vs `アリエ・ヴラギド`）；
+  - 自动在流水线草案与审阅报告中生成重定向预填建议（`suggested_info`），大幅降低长篇轻小说机翻译名漂移风险。
+- **停用词与黑名单外置 JSON 体系 (Externalized Stopwords Architecture)**：
+  - 抽离 `generic_stopwords`、`generic_prefixes`、`common_katakana_stopwords` 与 `honorific_suffixes` 为独立外置 JSON 文件（`glossary/glossary_stopwords.json`）；
+  - 支持工程工作区级独立覆写与 `--stopwords-config` 参数，缺失时自动平滑回退至插件内置标准底表，轻松适配现代学园、异世界西幻、古风仙侠等多题材作品。
+- **独立质量体检闭环 (`lint` Subcommand & Quality Auditing)**：
+  - 新增独立子命令 `lint`，全要素审查 LinguaGacha 五字段规范与四大质量硬红线：
+    - 致命错误拦截：`regex` 必须恒为 `false`（实体词严禁使用正则模式）、非空 `src` 原文字面量保障；
+    - 规范红线体检：常规称谓后缀拦截（`〜君`、`〜先生` 等）、非全简称嵌套长短词修饰冗余预警；
+    - 契约长度与剧透排查：严格校验 `info` 是否在 10~20 字符高价值区间，排查 `刺客`、`真名`、`幼年` 等小说大纲剧透特征词；
+    - 真实命中核验：结合原著纯文本自动检测并预警零命中幽灵词条；
+  - `export` 子命令全面集成 `lint` 预检逻辑，并支持 `--strict-lint` 在遇到严重违例时显式拦截。
+
+### ⚡ 工具链与手册更新 (CLI Manual & Toolkit v2.4)
+- 工具链 `epub_glossary_toolkit.py` 升级至 v2.4；
+- 更新 `references/cli_manual.md`，增加 `lint` 与 `--stopwords-config` 命令行手册；
+- 插件资源目录内置 `resources/glossary_stopwords.json` 模板。
+
+---
+
 ## [2.3.0] - 2026-09-15
 
 ### 🚀 核心质量缺陷根治 (Quality Redlines & Bug Fixes)

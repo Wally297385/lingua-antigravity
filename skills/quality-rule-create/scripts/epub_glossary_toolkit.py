@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-EPUB Glossary Toolkit for LinguaGacha & Antigravity (v2.2)
+EPUB Glossary Toolkit for LinguaGacha & Antigravity (v2.4)
 ===========================================================
-专为泛二次元日文轻小说/EPUB 文本设计的实体挖掘、全简称联动消歧与 LinguaGacha 标准格式导出工具链。
+专为泛二次元日文轻小说/EPUB 文本设计的实体挖掘、全简称联动消歧、笔误智能聚类与 LinguaGacha 标准格式导出工具链。
 纯 Python 标准库实现抽取与挖掘（导出 Excel 需 openpyxl，无依赖时降级提示）。
 
 主要功能：
 1. extract: 零外部依赖解压与解析 EPUB，读取 OPF 元数据，按自然数精准排序章节，清洗正文导出纯文本。
 2. mine: 深度多维度模式聚类挖掘（统一 Surface 契约，支持中点贵族全名、专名书名符号、ACG后缀、泛词黑名单防御）。
 3. prune: 算法级子串包含抑制（Sub-string Containment Pruning），根除词尾切片误报伪简称。
-4. auto_pair: 智能扫描贵族中点全名与高频独立简称，生成成对消歧建议（Suggested Pairs）。
-5. draft: 原生自动化组装开箱即用的 LinguaGacha 标准五字段草案 (glossary_draft_entries.json)。
-6. verify: 严格比对原著字面量出现频次，彻底拦截幽灵词条与虚构推断。
-7. export: 严格按照 LinguaGacha 五字段契约导出标准 JSON (4空格缩进) 与带样式的 Excel (工作表 rules)。
-8. pipeline: 一键串联全流程，产物统一集中收纳至 glossary/ 目录并生成 Markdown 审阅报告。
+4. typo_cluster: 基于 Levenshtein 编辑距离与词素倒置的疑似笔误/异体字智能聚类，自动生成重定向建议。
+5. auto_pair: 智能扫描贵族中点全名与高频独立简称，生成成对消歧建议（Suggested Pairs）。
+6. draft: 原生自动化组装开箱即用的 LinguaGacha 标准五字段草案 (glossary_draft_entries.json)。
+7. stopwords: 支持外置 JSON 停用词与黑名单配置（glossary_stopwords.json），平滑支持多题材作品覆盖。
+8. lint: 独立术语表质量体检命令，严格按 LinguaGacha 五字段与四大硬红线（称谓、长短词、通识词、10~20字与剧透）闭环审计。
+9. export: 严格按照 LinguaGacha 五字段契约导出标准 JSON (4空格缩进) 与带样式的 Excel (工作表 rules)，导出时自动执行体检闭环。
+10. pipeline: 一键串联全流程，产物统一集中收纳至 glossary/ 目录并生成结构化 Markdown 审阅报告。
 """
 
 import os
@@ -34,8 +36,8 @@ if sys.platform == 'win32':
     except (AttributeError, io.UnsupportedOperation):
         pass
 
-# 泛词黑名单与修饰前缀（防御修饰短语污染候选池，如“知らない家”、“新しい村”、“自分たちの町”）
-GENERIC_STOPWORDS = {
+# 默认内置泛词黑名单与修饰前缀（当外部配置文件不存在时兜底使用）
+DEFAULT_GENERIC_STOPWORDS = {
     "自分", "新しい", "知らない", "私", "僕", "俺", "あなた", "彼", "彼女", "誰か",
     "お前", "客", "商人", "領主", "お父", "お母", "お爺", "お婆", "みんな", "一人",
     "二人", "仲間", "人間", "大人", "子供", "男", "女", "声", "姿", "顔", "目",
@@ -49,19 +51,19 @@ GENERIC_STOPWORDS = {
     "不思議調査隊", "調査隊", "七不思議", "部活", "委員会", "怪談", "都市伝説"
 }
 
-# 常见修饰限定前缀（用于长短词嵌套剪枝与修饰短语防御）
-GENERIC_PREFIXES = (
+# 默认常见修饰限定前缀（用于长短词嵌套剪枝与修饰短语防御）
+DEFAULT_GENERIC_PREFIXES = (
     "自分", "新しい", "知らない", "私の", "僕の", "俺の", "あなたの", "彼の", "彼女の",
     "誰かの", "別の", "ある", "この", "その", "あの", "どの", "小さな", "大きな",
     "魔法科一年", "魔術科二年", "魔法科", "魔術科",
     # 学校、机构与设施常见修饰前缀
     "私立", "市立", "県立", "都立", "府立", "国立", "本校の", "旧", "新", "附属",
     # 方位与场所限定修饰前缀
-    "理科室の", "音楽室の", "教室の", "図書室の", "屋上の", "体育館の", "校庭の", "正門の", "階段の", "踊り場の"
+    "理科室の", "音楽室の", "教室の", "図书室の", "図書室の", "屋上の", "体育館の", "校庭の", "正門の", "階段の", "踊り場の"
 )
 
-# 现代日常通用片假名停用词（下游大模型100%已知，严禁充当专有名词收录）
-COMMON_KATAKANA_STOPWORDS = {
+# 默认现代日常通用片假名停用词（下游大模型100%已知，严禁充当专有名词收录）
+DEFAULT_COMMON_KATAKANA_STOPWORDS = {
     "クラス", "ピアノ", "ナイフ", "セキュリティ", "エネルギー", "ゴム", "シャツ", "スマホ",
     "ダイエット", "ノート", "ペン", "テーブル", "ドア", "ベッド", "ソファー", "トイレ",
     "シャワー", "タオル", "カップ", "グラス", "フォーク", "スプーン", "ポケット", "バッグ",
@@ -81,16 +83,66 @@ COMMON_KATAKANA_STOPWORDS = {
     "マッチ", "ボックス", "ケース", "プラスチック", "ガラス", "スチール", "コンクリート"
 }
 
-# 尊称与常见人名后缀集合（用于姓名清洗、独立边界识别与派生敬称剪枝）
-HONORIFIC_SUFFIXES = (
+# 默认尊称与常见人名后缀集合（用于姓名清洗、独立边界识别与派生敬称剪枝）
+DEFAULT_HONORIFIC_SUFFIXES = (
     "さん", "様", "さま", "君", "くん", "ちゃん", "先生", "先輩", "後輩", "殿", "卿",
     "親方", "大旦那", "姐さん", "大叔父", "大叔母", "女将", "殿下", "陛下", "皇子", "皇女", "王女"
 )
+
+# 全局运行期配置变量（支持外置配置文件动态覆盖）
+GENERIC_STOPWORDS = set(DEFAULT_GENERIC_STOPWORDS)
+GENERIC_PREFIXES = tuple(DEFAULT_GENERIC_PREFIXES)
+COMMON_KATAKANA_STOPWORDS = set(DEFAULT_COMMON_KATAKANA_STOPWORDS)
+HONORIFIC_SUFFIXES = tuple(DEFAULT_HONORIFIC_SUFFIXES)
 
 # 独立语法边界标志字符（日文助词、标点、括号与换行空格）
 INDEPENDENT_BOUNDARY_CHARS = set(
     "はがのをにへとでもよりからて「」『』（）()【】［］[]、。！？!?…‥ \t\r\n"
 )
+
+def load_stopwords_config(config_path=None):
+    """
+    智能加载停用词与黑名单外置 JSON 配置文件。
+    优先级：显式指定路径 -> 当前工作区 glossary/glossary_stopwords.json -> 插件资源目录 -> 内置默认底表。
+    """
+    global GENERIC_STOPWORDS, GENERIC_PREFIXES, COMMON_KATAKANA_STOPWORDS, HONORIFIC_SUFFIXES
+    
+    candidate_paths = []
+    if config_path:
+        candidate_paths.append(config_path)
+    
+    # 工作区 glossary 目录
+    candidate_paths.append(os.path.join(os.getcwd(), "glossary", "glossary_stopwords.json"))
+    candidate_paths.append(os.path.join(os.getcwd(), "glossary_stopwords.json"))
+    
+    # 插件所在 resources 目录
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    plugin_res = os.path.join(os.path.dirname(script_dir), "resources", "glossary_stopwords.json")
+    candidate_paths.append(plugin_res)
+    
+    found_path = None
+    for p in candidate_paths:
+        if p and os.path.exists(p):
+            found_path = p
+            break
+            
+    if found_path:
+        try:
+            with open(found_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if "generic_stopwords" in data:
+                GENERIC_STOPWORDS = set(data["generic_stopwords"])
+            if "generic_prefixes" in data:
+                GENERIC_PREFIXES = tuple(data["generic_prefixes"])
+            if "common_katakana_stopwords" in data:
+                COMMON_KATAKANA_STOPWORDS = set(data["common_katakana_stopwords"])
+            if "honorific_suffixes" in data:
+                HONORIFIC_SUFFIXES = tuple(data["honorific_suffixes"])
+            print(f"[CONFIG] 成功加载外置停用词配置文件: {found_path}")
+            return found_path
+        except Exception as e:
+            print(f"[WARN] 加载外置停用词配置文件失败 ({e})，平滑回退至内置默认底表。", file=sys.stderr)
+    return None
 
 def resolve_glossary_dir(base_dir=None):
     """
@@ -236,6 +288,112 @@ def count_independent_katakana(word, text):
     matches = re.findall(pattern, text)
     return len(matches)
 
+def levenshtein_distance(s1, s2):
+    """
+    纯 Python 零外部依赖实现轻量级 Levenshtein 编辑距离算法。
+    """
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    prev = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        curr = [i + 1] * (len(s2) + 1)
+        for j, c2 in enumerate(s2):
+            insertions = prev[j + 1] + 1
+            deletions = curr[j] + 1
+            substitutions = prev[j] + (c1 != c2)
+            curr[j + 1] = min(insertions, deletions, substitutions)
+        prev = curr
+    return prev[len(s2)]
+
+def cluster_potential_typos(text, full_names, min_ratio=3.0):
+    """
+    基于编辑距离与词素倒置的疑似笔误/异体字智能聚类器 (v2.4)：
+    1. 编辑距离聚类：对所有中点全名进行两两比对，若编辑距离 <= 1，且频次比 >= min_ratio，判定为疑似笔误；
+    2. 词素倒置聚类：识别如 A・B 与 B・A（或微变倒置，如ヴギラド・アリエ vs アリエ・ヴラギド）；
+    3. 输出结构化异体字预警与重定向建议模板。
+    """
+    typo_clusters = []
+    seen_pairs = set()
+
+    if not full_names:
+        return typo_clusters
+
+    # 构建频次字典
+    freq_map = {}
+    for item in full_names:
+        s = item.get("surface", "").strip()
+        c = item.get("count", text.count(s))
+        if s:
+            freq_map[s] = c
+
+    names = list(freq_map.keys())
+
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            n1, n2 = names[i], names[j]
+            c1, c2 = freq_map[n1], freq_map[n2]
+
+            # 确保 n1 是高频/主词，n2 是低频/疑似异体
+            if c1 < c2:
+                n1, n2 = n2, n1
+                c1, c2 = c2, c1
+
+            pair_key = (n1, n2)
+            if pair_key in seen_pairs:
+                continue
+
+            ratio = c1 / c2 if c2 > 0 else 999.0
+
+            # 1. 词素倒置识别 (Inversion)
+            parts1 = n1.split("・")
+            parts2 = n2.split("・")
+            is_inversion = False
+            inv_type = None
+
+            if len(parts1) == 2 and len(parts2) == 2:
+                # 完全倒置
+                if parts1[0] == parts2[1] and parts1[1] == parts2[0]:
+                    is_inversion = True
+                    inv_type = "EXACT_INVERSION"
+                # 模糊倒置（如前名相同，后名编辑距离 <= 2，如 ヴギラド・アリエ 与 アリエ・ヴラギド）
+                elif (parts1[0] == parts2[1] and levenshtein_distance(parts1[1], parts2[0]) <= 2) or \
+                     (parts1[1] == parts2[0] and levenshtein_distance(parts1[0], parts2[1]) <= 2):
+                    is_inversion = True
+                    inv_type = "FUZZY_INVERSION"
+
+            if is_inversion:
+                seen_pairs.add(pair_key)
+                typo_clusters.append({
+                    "canonical": n1,
+                    "canonical_count": c1,
+                    "typo_variant": n2,
+                    "variant_count": c2,
+                    "type": inv_type,
+                    "ratio": round(ratio, 1),
+                    "suggested_info": f"作者写法倒置异体字，建议统一重定向至 {n1}"
+                })
+                continue
+
+            # 2. 轻量级编辑距离聚类 (Levenshtein Distance <= 1)
+            # 过滤过短单词（至少 4 字符）以避免偶然巧合
+            if len(n1) >= 4 and len(n2) >= 4:
+                dist = levenshtein_distance(n1, n2)
+                if dist <= 1 and (ratio >= min_ratio or c2 == 1):
+                    seen_pairs.add(pair_key)
+                    typo_clusters.append({
+                        "canonical": n1,
+                        "canonical_count": c1,
+                        "typo_variant": n2,
+                        "variant_count": c2,
+                        "type": "EDIT_DISTANCE_1",
+                        "ratio": round(ratio, 1),
+                        "suggested_info": f"作者偶发笔误异体字，建议统一重定向至 {n1}"
+                    })
+
+    return typo_clusters
+
 def prune_contained_substrings(katakana_candidates, full_names, text, threshold=0.95, min_independent_freq=2):
     """
     算法级“子串包含抑制”（Sub-string Containment Pruning）：
@@ -306,7 +464,7 @@ def prune_honorific_variants(candidates, text=None):
     # 提取所有候选的 surface 集合
     all_surfaces = set()
     for item in candidates:
-        s = item["surface"] if isinstance(item, dict) else str(item)
+        s = (item.get("surface") or item.get("src") or "") if isinstance(item, dict) else str(item)
         if s:
             all_surfaces.add(s)
 
@@ -314,7 +472,7 @@ def prune_honorific_variants(candidates, text=None):
     suppressed = []
 
     for item in candidates:
-        s = item["surface"] if isinstance(item, dict) else str(item)
+        s = (item.get("surface") or item.get("src") or "") if isinstance(item, dict) else str(item)
 
         is_variant = False
         for sfx in HONORIFIC_SUFFIXES:
@@ -360,7 +518,7 @@ def prune_nested_entities(candidates, text=None):
 
     item_dict = {}
     for item in candidates:
-        s = item["surface"] if isinstance(item, dict) else str(item)
+        s = (item.get("surface") or item.get("src") or "") if isinstance(item, dict) else str(item)
         if s:
             item_dict[s] = item
 
@@ -410,7 +568,7 @@ def prune_nested_entities(candidates, text=None):
 
 def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
     """
-    深度多模式日文实体聚类挖掘引擎（v2.2 标准契约归一版）：
+    深度多模式日文实体聚类挖掘引擎（v2.4 标准契约归一版）：
     - 严格遵循统一字段契约：{ "surface", "count", "snippets", "category" }
     - 支持片假名与日汉混合中点全名；
     - ACG 专属组织/地理/阶级/系统后缀特征；
@@ -553,7 +711,7 @@ def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
 
 def link_name_candidates(text, full_names, min_short_freq=3):
     """
-    全称与高频独立简称联动建议生成器 (v2.2 Surface 契约与独立频次加固)：
+    全称与高频独立简称联动建议生成器 (v2.4 Surface 契约与独立频次加固)：
     - 扫描 A・B 全名，拆解出分词；
     - 严格使用 count_independent_katakana 统计其作为独立词出现的频次；
     - 彻底拦截如“リア”（シャーベリア词尾）被错误关联至偶然组合“リア・フローズン”的假阳性；
@@ -594,12 +752,12 @@ def link_name_candidates(text, full_names, min_short_freq=3):
 
     return pairs
 
-def generate_glossary_draft(mined_data, name_pairs):
+def generate_glossary_draft(mined_data, name_pairs, typo_clusters=None):
     """
-    原生五字段草案自动生成器 (Draft Generator)：
+    原生五字段草案自动生成器 (Draft Generator v2.4)：
     - 严格遵循 LinguaGacha 五字段标准契约 (src, dst, info, regex: false, case_sensitive: false)；
     - 智能组装中点全称、联动消歧简称、书名号核心设定词与高频专有名词；
-    - 极大减少下游手动/即席脚本转换成本，杜绝 Windows 即席脚本编码灾难。
+    - 自动融合疑似笔误/异体字重定向预填建议。
     """
     draft_entries = []
     seen_src = set()
@@ -619,26 +777,32 @@ def generate_glossary_draft(mined_data, name_pairs):
     # 1. 优先加入主要人物中点全名
     for item in mined_data.get("full_names_with_dot", []):
         s = item["surface"]
-        add_entry(s, "待定性别，角色定位")
+        add_entry(s, "角色定位，待定性别与身份")
 
     # 2. 加入建议的消歧简称条目
     for p in name_pairs:
         s = p["short_name"]
         add_entry(s, f"常用简称；对应全名 {p['full_name']}")
 
-    # 3. 加入书名号核心设定/招式词
+    # 3. 加入疑似笔误重定向预设条目
+    if typo_clusters:
+        for t in typo_clusters:
+            s = t["typo_variant"]
+            add_entry(s, t["suggested_info"])
+
+    # 4. 加入书名号核心设定/招式词
     for item in mined_data.get("bracketed_terms", []):
         if item["count"] >= 2:
             s = item["surface"]
             add_entry(s, "核心设定/招式")
 
-    # 4. 加入高频片假名专名（未被全名覆盖的前排专名，排查日常外来语）
+    # 5. 加入高频片假名专名（未被全名覆盖的前排专名，排查日常外来语）
     for item in mined_data.get("katakana_compounds", [])[:30]:
         s = item["surface"]
         if item["count"] >= 5 and s not in COMMON_KATAKANA_STOPWORDS:
             add_entry(s, "专有名词/术语")
 
-    # 5. 加入组织与重要地名（排查通识社团词）
+    # 6. 加入组织与重要地名（排查通识社团词）
     for org in mined_data.get("named_entities_by_suffix", {}).get("org", [])[:10]:
         s = org["surface"]
         if s not in GENERIC_STOPWORDS:
@@ -649,26 +813,157 @@ def generate_glossary_draft(mined_data, name_pairs):
         if s not in GENERIC_STOPWORDS:
             add_entry(s, "地名/设施")
 
-    # 6. 对草案条目执行全局称谓变体过滤与长短词嵌套剪枝
+    # 7. 对草案条目执行全局称谓变体过滤与长短词嵌套剪枝
     draft_entries = prune_honorific_variants(draft_entries)
     draft_entries = prune_nested_entities(draft_entries)
 
     return draft_entries
 
-def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_verify=None, prune_zero_hits=False):
+def lint_glossary(entries, text=None, strict=False):
+    """
+    独立术语表质量全要素体检引擎 (Linting Engine v2.4):
+    对照 LinguaGacha 五字段契约与四大硬红线进行深度审查：
+    1. 字段完整性与类型校验（src非空、regex恒为False、case_sensitive为布尔值）；
+    2. 红线 1：常规称谓后缀派生拦截（〜君、〜先生、〜さん 等）；
+    3. 红线 2：非全简称修饰嵌套长短词冲突检测；
+    4. 红线 3：大模型已知通识词与日常片假名免录排查；
+    5. 红线 4：info 字段 10~20 字符长度约束与剧透特征词排查；
+    6. 文本字面量 100% 真实命中核验（若提供原著文本）。
+    """
+    errors = []
+    warnings = []
+    notices = []
+    
+    all_srcs = [item.get("src", "").strip() for item in entries if isinstance(item, dict) and item.get("src", "").strip()]
+    seen_src = set()
+
+    SPOILER_KEYWORDS = ("刺客", "刺杀", "真名", "幼年", "原名", "旧名", "遇害", "死亡", "原庇护者", "真实全名")
+
+    for idx, item in enumerate(entries):
+        line = idx + 1
+        if not isinstance(item, dict):
+            errors.append(f"第 {line} 项不是标准 JSON 对象")
+            continue
+
+        src = item.get("src", "").strip()
+        dst = item.get("dst", "").strip()
+        info = item.get("info", "").strip()
+        regex = item.get("regex", False)
+        case_sensitive = item.get("case_sensitive", False)
+
+        # 1. 字段基础校验
+        if not src:
+            errors.append(f"第 {line} 项缺少非空 'src' 原文字面量")
+            continue
+        if src in seen_src:
+            warnings.append(f"第 {line} 项发现重复原词 '{src}'")
+        seen_src.add(src)
+
+        if regex is not False:
+            errors.append(f"条目 '{src}' 的 regex 必须为 false (实际为 {regex})，实体词严禁使用正则模式！")
+
+        if not isinstance(case_sensitive, bool):
+            warnings.append(f"条目 '{src}' 的 case_sensitive 应为布尔值 (实际为 {case_sensitive})")
+
+        # 2. 红线 1：常规人名称谓拦截
+        for sfx in HONORIFIC_SUFFIXES:
+            if src.endswith(sfx) and len(src) > len(sfx):
+                stem = src[:-len(sfx)].strip()
+                if stem in seen_src or stem in all_srcs:
+                    warnings.append(f"[红线 1 称谓污染] 条目 '{src}' 包含常规敬称后缀 '{sfx}' 且词根 '{stem}' 已存在，严禁独立入表！")
+                    break
+
+        # 3. 红线 3：通识词与日常外来语
+        if src in GENERIC_STOPWORDS or src in COMMON_KATAKANA_STOPWORDS:
+            notices.append(f"[红线 3 通识词免录] 条目 '{src}' 属于下游大模型已知通识词/日常外来语，建议免录以节约上下文")
+
+        # 4. 红线 4：info 字段契约检查 (10~20 字符) 与剧透特征检测
+        info_len = len(info)
+        if info_len == 0:
+            warnings.append(f"[红线 4 info 缺失] 条目 '{src}' 的 info 说明为空，无法指导下游代词与口吻消歧")
+        elif info_len < 10:
+            warnings.append(f"[红线 4 info 偏短] 条目 '{src}' 的 info 仅 {info_len} 字 (建议 10~20 字): '{info}'")
+        elif info_len > 20:
+            warnings.append(f"[红线 4 info 超标] 条目 '{src}' 的 info 达到 {info_len} 字 (超标 >20 字限制): '{info}'")
+
+        for kw in SPOILER_KEYWORDS:
+            if kw in info:
+                notices.append(f"[红线 4 疑似剧透] 条目 '{src}' 的 info 含有剧情敏感特征词 '{kw}': '{info}'")
+                break
+
+        # 5. 真实命中率检查
+        if text is not None:
+            if text.count(src) == 0:
+                warnings.append(f"[幽灵词条] 条目 '{src}' 在原著文本中字面量命中为 0 次，可能存在推断过度或拼写误差！")
+
+    # 6. 红线 2：长短词修饰嵌套冲突检测 (两两比对)
+    for i in range(len(all_srcs)):
+        s1 = all_srcs[i]
+        for j in range(i + 1, len(all_srcs)):
+            s2 = all_srcs[j]
+            s_short, s_long = (s1, s2) if len(s1) < len(s2) else (s2, s1)
+            if s_short in s_long:
+                # 排除标准的中点全简称对应（如 'フォア' in 'フォア・プレット'）
+                if "・" in s_long and (s_long.startswith(s_short + "・") or s_long.endswith("・" + s_short) or f"・{s_short}・" in s_long):
+                    continue
+                warnings.append(f"[红线 2 嵌套冗余] 短词 '{s_short}' 包含在长词 '{s_long}' 中，若长词仅为种族/设施修饰扩展，建议剔除以维持最小充分集合")
+
+    # 输出体检报告
+    print("\n" + "=" * 65)
+    print(f"📋 LinguaGacha 术语表质量体检回执 (总条目: {len(entries)})")
+    print("=" * 65)
+    print(f"  ❌ 致命错误 (Errors):   {len(errors)}")
+    print(f"  ⚠️ 规范警告 (Warnings): {len(warnings)}")
+    print(f"  💡 优化提示 (Notices):  {len(notices)}")
+    print("-" * 65)
+
+    if errors:
+        print("\n[致命错误列表 - 必须修复]:")
+        for err in errors:
+            print(f"  ❌ {err}")
+
+    if warnings:
+        print("\n[规范警告列表 - 违背四大硬红线或契约]:")
+        for warn in warnings[:15]:
+            print(f"  ⚠️ {warn}")
+        if len(warnings) > 15:
+            print(f"  ... 另有 {len(warnings) - 15} 条警告已折叠")
+
+    if notices:
+        print("\n[优化提示列表]:")
+        for noti in notices[:10]:
+            print(f"  💡 {noti}")
+        if len(notices) > 10:
+            print(f"  ... 另有 {len(notices) - 10} 条提示已折叠")
+
+    if not errors and not warnings:
+        print("\n🎉 恭喜！全表 100% 严格符合 LinguaGacha 五字段与四大质量控制红线契约！")
+
+    print("=" * 65 + "\n")
+
+    is_passed = (len(errors) == 0) and (not strict or len(warnings) == 0)
+    return {
+        "passed": is_passed,
+        "errors": errors,
+        "warnings": warnings,
+        "notices": notices
+    }
+
+def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_verify=None, prune_zero_hits=False, strict_lint=False):
     """
     按照 LinguaGacha 五字段标准契约校验并导出术语表。
     强制遵循产物收纳于 glossary/ 目录规范。
-    支持 prune_zero_hits 自动拦截未命中幽灵词条。
-    强化 4 大质量硬约束拦截：常规敬称过滤、长短词修饰去重、通识词告警与 info 长度体检。
+    内置一键全要素质量体检闭环 (Linting on Export)。
     """
+    # 1. 导出前执行全要素质量体检
+    lint_res = lint_glossary(entries, text=text_to_verify, strict=strict_lint)
+    if not lint_res["passed"] and strict_lint:
+        print("[FATAL] 严格体检模式检测到违规项，已中止导出操作！", file=sys.stderr)
+        return []
+
     cleaned = []
     seen = set()
     pruned = []
-    quality_warnings = []
-
-    # 预扫描所有 src 用于变体与长短词冲突检测
-    all_srcs = {item.get("src", "").strip() for item in entries if item.get("src", "").strip()}
 
     for idx, item in enumerate(entries):
         src = item.get("src", "").strip()
@@ -677,43 +972,14 @@ def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_veri
         regex = bool(item.get("regex", False))
         case_sensitive = bool(item.get("case_sensitive", False))
 
-        if not src:
-            print(f"[WARN] 第 {idx+1} 项缺少非空 'src'，已忽略", file=sys.stderr)
+        if not src or src in seen:
             continue
-        if src in seen:
-            print(f"[WARN] 重复条目 '{src}'，已跳过后续重复项", file=sys.stderr)
-            continue
-
-        # 质量核验 1：常规人名敬称称谓拦截（如 日向君、金森先生 等）
-        is_honorific = False
-        for sfx in HONORIFIC_SUFFIXES:
-            if src.endswith(sfx) and len(src) > len(sfx):
-                stem = src[:-len(sfx)].strip()
-                if stem in all_srcs:
-                    msg = f"[QUALITY REDLINE] 发现常规敬称派生条目 '{src}' (词根 '{stem}' 已在术语表中)，严禁机械入表控制！"
-                    quality_warnings.append(msg)
-                    print(f"[WARN] {msg}", file=sys.stderr)
-                    is_honorific = True
-                    break
-
-        # 质量核验 2：通识社团与大模型已知词提示
-        if src in GENERIC_STOPWORDS or src in COMMON_KATAKANA_STOPWORDS:
-            msg = f"[QUALITY REDLINE] 发现下游 LLM 可稳定翻译的通识词/日常外来语 '{src}'，建议免录以节省上下文。"
-            quality_warnings.append(msg)
-            print(f"[WARN] {msg}", file=sys.stderr)
-
-        # 质量核验 3：info 字段长度与剧透排查（超过 35 字符提示精简）
-        if len(info) > 35:
-            msg = f"[QUALITY INFO] 条目 '{src}' 的 info 说明过长 ({len(info)} 字符)，建议精简为性别/身份/动作等高价值翻译提示，严禁剧情剧透！"
-            quality_warnings.append(msg)
 
         if text_to_verify and src not in text_to_verify:
             if prune_zero_hits:
                 print(f"[PRUNED] 原文 '{src}' 未在原著文本中命中，已自动剔除该幽灵词条", file=sys.stderr)
                 pruned.append(src)
                 continue
-            else:
-                print(f"[NOTICE] 原文 '{src}' 未在原著文本中精确命中，请核实", file=sys.stderr)
 
         entry = {
             "src": src,
@@ -726,10 +992,7 @@ def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_veri
         seen.add(src)
 
     if pruned:
-        print(f"[INFO] 自动清理完成：共剔除 {len(pruned)} 条未命中幽灵词条: {pruned}")
-    if quality_warnings:
-        print(f"[QUALITY SUMMARY] 共检出 {len(quality_warnings)} 项质量规范优化建议，详情请查看终端警告。")
-    print(f"[INFO] 成功校验 {len(cleaned)} 条有效术语。")
+        print(f"[INFO] 自动清理完成：共剔除 {len(pruned)} 条未命中幽灵词条。")
 
     def normalize_output_path(p, default_filename):
         if not p:
@@ -836,24 +1099,27 @@ def verify_glossary_entries(entries, text, prune_out=None):
 
     return {"total": total, "matched": len(matched), "missing": missing}
 
-def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True):
+def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True, stopwords_config=None):
     """
-    一键式流水线 (v2.2)：
-    全本抽取 -> 深度挖掘(带子串包含抑制) -> 全简称联动 -> 原生五字段草案生成 -> 校验并生成报告。
+    一键式流水线 (v2.4)：
+    全本抽取 -> 深度挖掘(带子串包含抑制) -> 笔误与异体字智能聚类 -> 全简称联动 -> 原生五字段草案生成 -> 自动生成详尽Markdown报告。
     所有产物集中归档于 glossary/ 目录。
     """
     if not output_dir:
         output_dir = "glossary"
     os.makedirs(output_dir, exist_ok=True)
 
+    # 动态加载停用词
+    load_stopwords_config(stopwords_config)
+
     print("\n" + "=" * 60)
-    print("🚀 启动 EPUB 专名挖掘与全流程流水线 (Pipeline Mode v2.2)")
+    print("🚀 启动 EPUB 专名挖掘与全流程流水线 (Pipeline Mode v2.4)")
     print(f"📁 产物归集目录: {os.path.abspath(output_dir)}")
     print("=" * 60)
 
     # 1. 抽取纯文本
     txt_out = os.path.join(output_dir, "extracted_text.txt")
-    print("\n[步骤 1/5] 解析 EPUB 并提取章节纯文本...")
+    print("\n[步骤 1/6] 解析 EPUB 并提取章节纯文本...")
     extract_res = extract_epub(epub_path, output_txt=txt_out)
     full_text = extract_res["full_text"]
     meta = extract_res["metadata"]
@@ -862,11 +1128,17 @@ def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True):
     print(f"  - 章节数: {extract_res['chapters_count']} | 总字数: {len(full_text):,} 字")
 
     # 2. 深度挖掘候选（内置 Surface 契约归一与子串抑制）
-    print("\n[步骤 2/5] 运行深度实体挖掘引擎 (Surface 契约归一 + 算法级子串包含抑制)...")
+    print("\n[步骤 2/6] 运行深度实体挖掘引擎 (Surface 契约归一 + 算法级子串包含抑制)...")
     mined = mine_entities(full_text, min_freq=min_freq, with_snippets=with_snippets)
     
-    # 3. 全称与高频独立简称联动
-    print("\n[步骤 3/5] 分析全称与高频独立简称联动消歧关系...")
+    # 3. 基于编辑距离与倒置的疑似笔误/异体字智能聚类
+    print("\n[步骤 3/6] 运行疑似笔误与倒置异体字智能聚类引擎 (Levenshtein Clustering)...")
+    typo_clusters = cluster_potential_typos(full_text, mined["full_names_with_dot"], min_ratio=3.0)
+    mined["potential_typos"] = typo_clusters
+    print(f"  - 发现疑似笔误/异体字重定向预警: {len(typo_clusters)} 组")
+
+    # 4. 全称与高频独立简称联动
+    print("\n[步骤 4/6] 分析全称与高频独立简称联动消歧关系...")
     name_pairs = link_name_candidates(full_text, mined["full_names_with_dot"], min_short_freq=3)
     mined["suggested_name_pairs"] = name_pairs
     print(f"  - 发现中点贵族/西方全名: {len(mined['full_names_with_dot'])} 个")
@@ -878,20 +1150,20 @@ def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True):
         json.dump(mined, f, ensure_ascii=False, indent=4)
     print(f"  - 统一候选集已保存: {candidates_path}")
 
-    # 4. 原生生成五字段草案 (Draft Generator)
-    print("\n[步骤 4/5] 原生自动组装 LinguaGacha 标准五字段草案...")
-    draft_entries = generate_glossary_draft(mined, name_pairs)
+    # 5. 原生生成五字段草案 (Draft Generator)
+    print("\n[步骤 5/6] 原生自动组装 LinguaGacha 标准五字段草案...")
+    draft_entries = generate_glossary_draft(mined, name_pairs, typo_clusters=typo_clusters)
     draft_path = os.path.join(output_dir, "glossary_draft_entries.json")
     with open(draft_path, 'w', encoding='utf-8') as f:
         json.dump(draft_entries, f, ensure_ascii=False, indent=4)
     print(f"  - 五字段初稿草案已生成: {draft_path} (共 {len(draft_entries)} 条)")
 
-    # 5. 生成审查报告
-    print("\n[步骤 5/5] 自动生成 Markdown 结构化审阅报告...")
+    # 6. 生成审查报告
+    print("\n[步骤 6/6] 自动生成 Markdown 结构化审阅报告...")
     report_path = os.path.join(output_dir, "glossary_pipeline_report.md")
     
     report_lines = [
-        f"# EPUB 专名挖掘与候选集审查报告 (v2.2)",
+        f"# EPUB 专名挖掘与候选集审查报告 (v2.4)",
         f"",
         f"- **书籍标题**: {meta.get('title', os.path.basename(epub_path))}",
         f"- **作者**: {meta.get('creator', '未知')}",
@@ -915,11 +1187,29 @@ def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True):
         f"",
         f"---",
         f"",
+        f"## 🔍 疑似笔误与异体字聚类预警 (Potential Typos & Inversions)",
+        f"",
+        f"| 标准规范名 (出现频次) | 疑似笔误/倒置 (出现频次) | 类型与频次比 | 建议处理策略 |",
+        f"| :--- | :--- | :---: | :--- |"
+    ]
+
+    if typo_clusters:
+        for t in typo_clusters:
+            report_lines.append(
+                f"| `{t['canonical']}` ({t['canonical_count']}次) | `{t['typo_variant']}` ({t['variant_count']}次) | {t['type']} (比率: {t['ratio']}) | 定向重定向至 `{t['canonical']}` 的规范译名 |"
+            )
+    else:
+        report_lines.append("| *暂未检测到显著笔误或倒置异体字* | - | - | - |")
+
+    report_lines.extend([
+        f"",
+        f"---",
+        f"",
         f"## 🔗 全称与高频独立简称联动建议 (Suggested Pairs)",
         f"",
         f"| 角色全称 (出现频次) | 常用简称 (独立频次) | 建议消歧说明模板 |",
         f"| :--- | :--- | :--- |"
-    ]
+    ])
 
     if name_pairs:
         for p in name_pairs:
@@ -935,7 +1225,11 @@ def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True):
         f"",
         f"1. **五字段草案已就绪**: 请直接查看 `{draft_path}`；",
         f"2. 补充各条目的目标译文 `dst`（参考 `info` 中的消歧建议），保存为 `glossary/glossary_entries.json`；",
-        f"3. 运行 `export` 子命令导出最终标准术语表：",
+        f"3. 运行 `lint` 进行全要素红线体检，确保零错误：",
+        f"   ```powershell",
+        f"   python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py lint glossary/glossary_entries.json --text glossary/extracted_text.txt",
+        f"   ```",
+        f"4. 运行 `export` 子命令导出最终标准术语表：",
         f"   ```powershell",
         f"   python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py export glossary/glossary_entries.json --json-out glossary/glossary_rules.json --xlsx-out glossary/glossary_rules.xlsx",
         f"   ```",
@@ -958,15 +1252,16 @@ def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True):
     }
 
 def main():
-    parser = argparse.ArgumentParser(description="EPUB Glossary Extraction & Export Toolkit for LinguaGacha (v2.2)")
+    parser = argparse.ArgumentParser(description="EPUB Glossary Extraction & Export Toolkit for LinguaGacha (v2.4)")
     subparsers = parser.add_subparsers(dest="command", help="子命令")
 
     # pipeline
-    p_pipe = subparsers.add_parser("pipeline", help="一键流水线：全本抽取 -> 深度挖掘 -> 全简称联动 -> 直出五字段草案 -> 校验报告")
+    p_pipe = subparsers.add_parser("pipeline", help="一键流水线：全本抽取 -> 深度挖掘 -> 笔误聚类 -> 全简称联动 -> 直出五字段草案 -> 校验报告")
     p_pipe.add_argument("epub", help="EPUB 文件路径")
     p_pipe.add_argument("-o", "--output-dir", default="glossary", help="产物输出目录 (默认: glossary)")
     p_pipe.add_argument("--min-freq", type=int, default=2, help="词频阈值 (默认: 2)")
     p_pipe.add_argument("--no-snippets", action="store_true", help="不抓取语境切片")
+    p_pipe.add_argument("--stopwords-config", help="外置停用词 JSON 配置文件路径")
 
     # extract
     p_extract = subparsers.add_parser("extract", help="解压并提取 EPUB 纯文本")
@@ -980,6 +1275,14 @@ def main():
     p_mine.add_argument("--min-freq", type=int, default=2, help="词频阈值 (默认: 2)")
     p_mine.add_argument("--with-snippets", action="store_true", help="为候选词提取原著上下文切片")
     p_mine.add_argument("--snippet-count", type=int, default=3, help="每个候选词提取的切片数量 (默认: 3)")
+    p_mine.add_argument("--stopwords-config", help="外置停用词 JSON 配置文件路径")
+
+    # lint
+    p_lint = subparsers.add_parser("lint", help="独立质量体检命令：全要素审查五字段完整性、10~20字限制与四大质量硬红线")
+    p_lint.add_argument("entries_json", help="术语表 JSON 文件路径")
+    p_lint.add_argument("--text", help="用于比对真实命中的原著纯文本 TXT 路径")
+    p_lint.add_argument("--strict", action="store_true", help="严格模式：存在任何红线警告均返回非零退出码")
+    p_lint.add_argument("--stopwords-config", help="外置停用词 JSON 配置文件路径")
 
     # export
     p_export = subparsers.add_parser("export", help="导出 LinguaGacha 五字段术语表 (默认输出至 glossary/ 目录)")
@@ -988,6 +1291,8 @@ def main():
     p_export.add_argument("--xlsx-out", help="导出 XLSX 路径 (默认: glossary/glossary_rules.xlsx)")
     p_export.add_argument("--verify-text", help="用于真实性比对的纯文本文件")
     p_export.add_argument("--prune-zero-hits", action="store_true", help="自动剔除未命中的幽灵词条")
+    p_export.add_argument("--strict-lint", action="store_true", help="严格模式：存在体检致命错误或严重警告时中止导出")
+    p_export.add_argument("--stopwords-config", help="外置停用词 JSON 配置文件路径")
 
     # verify
     p_verify = subparsers.add_parser("verify", help="快速校验术语表在原著文本中的命中率并报告幽灵词条")
@@ -997,8 +1302,12 @@ def main():
 
     args = parser.parse_args()
 
+    # 加载可选的外置停用词配置
+    if hasattr(args, "stopwords_config") and args.stopwords_config:
+        load_stopwords_config(args.stopwords_config)
+
     if args.command == "pipeline":
-        run_pipeline(args.epub, output_dir=args.output_dir, min_freq=args.min_freq, with_snippets=not args.no_snippets)
+        run_pipeline(args.epub, output_dir=args.output_dir, min_freq=args.min_freq, with_snippets=not args.no_snippets, stopwords_config=args.stopwords_config)
     elif args.command == "extract":
         out_txt = args.output or os.path.join("glossary", "extracted_text.txt")
         res = extract_epub(args.epub, out_txt)
@@ -1012,6 +1321,16 @@ def main():
         with open(out_json, 'w', encoding='utf-8') as f:
             json.dump(mined, f, ensure_ascii=False, indent=4)
         print(f"[SUCCESS] [GLOSSARY DIRECTORY] 统一候选集已保存至: {out_json}")
+    elif args.command == "lint":
+        with open(args.entries_json, 'r', encoding='utf-8') as f:
+            entries = json.load(f)
+        text = None
+        if args.text and os.path.exists(args.text):
+            with open(args.text, 'r', encoding='utf-8') as f:
+                text = f.read()
+        lint_res = lint_glossary(entries, text=text, strict=args.strict)
+        if not lint_res["passed"]:
+            sys.exit(1)
     elif args.command == "export":
         with open(args.entries_json, 'r', encoding='utf-8') as f:
             entries = json.load(f)
@@ -1019,7 +1338,7 @@ def main():
         if args.verify_text and os.path.exists(args.verify_text):
             with open(args.verify_text, 'r', encoding='utf-8') as f:
                 verify_text = f.read()
-        export_linguagacha(entries, args.json_out, args.xlsx_out, verify_text, prune_zero_hits=args.prune_zero_hits)
+        export_linguagacha(entries, args.json_out, args.xlsx_out, verify_text, prune_zero_hits=args.prune_zero_hits, strict_lint=args.strict_lint)
     elif args.command == "verify":
         with open(args.entries_json, 'r', encoding='utf-8') as f:
             entries = json.load(f)
