@@ -61,7 +61,7 @@ LinguaGacha 在虚构故事翻译、露骨/负面内容忠实保持、术语消�
 | :--- | :---: | :--- |
 | **`translation-review`** | 翻译审查 | 译文质量自适应发现与多代理并发审校（警告种子 + 分散取样 + 闭包扫描 + 冻结残差收敛）。支持 Antigravity 原生子代理（`invoke_subagent`）分发并发审校。 |
 | **`quality-rule-workflow`** | 质量流引擎 | 质量规则创建与既有规则审查统一生命周期引擎，提供语义聚类、全称简称联动与冲突仲裁。 |
-| **`quality-rule-create`** | 规则提取 | 专有名词、角色、阵营与必杀技挖掘提取，内置 `epub_glossary_toolkit.py` 自动化轻小说 EPUB 提取工具链。 |
+| **`quality-rule-create`** | 规则提取 | 专有名词、角色、阵营与必杀技挖掘提取，内置 `epub_glossary_toolkit.py` 自动化轻小说 EPUB 一键流水线（`pipeline`），产物统一定向至 `glossary/` 目录。 |
 | **`acg-glossary-verification`**| 专名核验 | 泛二次元作品专有名词权威源（萌娘百科、文库百科、官方企划）核验、消歧、私设隔离与知识优先检索策略。 |
 | **`roleplay`** | 故事演绎 | 虚构世界与人物识别，基于 `task/roleplay/state.json` 状态机的长篇分支角色扮演，每回合提供 `💡 行动灵感` 选项。 |
 | **`fiction-rules`** | 创作准则 | 虚构故事叙事质量基准（行为系统、因果推进、空间材料成本、信息显露、节奏把控与创作诊断）。 |
@@ -79,6 +79,7 @@ LinguaGacha 在虚构故事翻译、露骨/负面内容忠实保持、术语消�
 | **`regex`** | `boolean` | 是 | **是否使用正则表达式**：实体术语表中固定为 `false`（按字面量精确匹配），模式替换规则设为 `true` |
 | **`case_sensitive`** | `boolean` | 是 | **是否大小写敏感**：默认为 `false`（不区分大小写），仅当存在真实大小写冲突时设为 `true` |
 
+- **产物归档约束（硬红线）**：所有提取的中间文本、候选 JSON 以及最终导出的术语表必须统一存放于工作区 `glossary/` 目录。
 - **多格式互转**：支持直接导出为 4 空格缩进的 JSON 文件（与 `露西.json` 一致）或包含 `"rules"` 表单的 Excel `.xlsx` 文件（与 `露西.xlsx` 一致），可直接导入至 LinguaGacha GUI。
 
 ### 5. 🛡️ 原生工作区安全契约与两阶段授权 (Two-Stage Authorization)

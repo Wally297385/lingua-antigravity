@@ -33,6 +33,9 @@ glossary 承载普通翻译无法稳定推出的专有译法、身份、消歧�
 - 优先保留语义独立完整的专有实体；
 - 衍生词若可通过核心词根稳定覆盖且无歧义，优先保留核心词，杜绝无节制膨胀。
 
+### 2.4 产物路径存放约束（硬红线）
+- 所有提取候选、消歧条目及导出的 JSON / XLSX 术语表，**必须统一存放于工程根目录的 `glossary/` 文件夹**（如 `glossary/glossary_rules.json`、`glossary/glossary_rules.xlsx`），严禁散落于根目录或临时路径。
+
 ---
 
 ## 3. 标准数据契约与范本
@@ -47,6 +50,7 @@ glossary 承载普通翻译无法稳定推出的专有译法、身份、消歧�
 
 推荐复用 `@skill(quality-rule-create)` 内置工具链进行验证与导出：
 ```powershell
-python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py export <entries.json> --json-out <out.json> --xlsx-out <out.xlsx> --verify-text <full_text.txt>
+python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py export glossary/glossary_entries.json --json-out glossary/glossary_rules.json --xlsx-out glossary/glossary_rules.xlsx --verify-text glossary/extracted_text.txt
 ```
-Python 脚本已内置 Windows UTF-8 管道安全自愈，直接调用即可。
+Python 脚本已内置 Windows UTF-8 管道安全自愈与 `glossary/` 默认路径归集，直接调用即可。
+

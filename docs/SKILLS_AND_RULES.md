@@ -83,7 +83,7 @@ skills/
   - **两阶段写入授权**：先汇报统计与示例，搭档确认后导出。
 
 ### 3. `quality-rule-create` & `acg-glossary-verification`
-- **`quality-rule-create`**：搭载内置的 `epub_glossary_toolkit.py` 工具链，支持 EPUB 纯文本提取、模式挖掘与标准五字段导出。
+- **`quality-rule-create`**：搭载内置的 `epub_glossary_toolkit.py` 工具链，提供全自动化一键流水线（`pipeline`），支持从 EPUB 提取、深度实体模式挖掘、全简称联动消歧到字面量校验与报告生成，所有产物硬性约束归档于 `glossary/` 目录。
 - **`acg-glossary-verification`**：泛二次元专有名词权威核验，遵循“知识库优先 + 按需定向检索”原则，高效仲裁译名冲突。
 
 ### 4. `roleplay` (故事角色扮演与世界模拟)
