@@ -21,15 +21,26 @@ description: 当需要通过扫描当前工程发现新术语、专有名词、�
 
 ---
 
-## 2. EPUB / 小说专名挖掘工具链
+## 2. EPUB / 小说专名挖掘工具链（黑盒执行资产）
 
-当输入源为 `.epub` 文件或长篇小说纯文本时，直接调用内置工具链脚本：
-`scripts/epub_glossary_toolkit.py`（已内置 Windows UTF-8 管道安全配置）。
+> 🚨 **【黑盒工具执行红线 · 严禁读取源码】**
+> 内置脚本 `scripts/epub_glossary_toolkit.py` 是经过充分验证与严密封装的生产级黑盒 CLI 工具（1300+ 行）。
+> **在日常执行挖掘、清洗、体检、校验与导出任务时，严禁使用 `view_file` 读取该脚本源码！**
+> 违规读码将导致上万 Token 上下文泄漏与严重记忆稀释。参数疑问统一通过控制台 `--help` 查看。
+> **仅当搭档明确提出“修复工具 Bug / 升级重构工具本身”时，才允许读取其代码。**
 
-- **流水线支持**：
-  - **`pipeline`（推荐一键管线）**：全自动串联全本抽取 ➔ 深度实体挖掘 ➔ 全简称消歧联动 ➔ 零命中核验 ➔ 自动生成审查报告。
-  - **分步子命令**：`extract`（纯文本抽取）、`mine`（实体挖掘与切片）、`verify`（字面量校验）、`export`（标准五字段导出）。
-- 完整子命令参数与批处理脚本示例参见：**[工具链命令行手册](./references/cli_manual.md)**。
+### 2.1 即用命令速查（CLI Recipes - 闭眼照抄直接执行）
+
+在 Windows pwsh 环境下，通过 `run_command` 直接调用以下经过编码加固的标准命令（将 `<input.epub>` 替换为实际电子书路径）：
+
+| 场景 | 标准执行命令 | 自动化效果 |
+| :--- | :--- | :--- |
+| **一键流水线 (首选)** | `$env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py pipeline "<input.epub>"` | 自动全本抽取 ➔ 深度挖掘与四层剪枝 ➔ 笔误编辑距离聚类 ➔ 全简称联动 ➔ 生成五字段草案 (`glossary/glossary_draft_entries.json`) 与审查简报 (`glossary/glossary_pipeline_report.md`) |
+| **质量全要素体检** | `$env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py lint glossary/glossary_entries.json --text glossary/extracted_text.txt` | 全要素审查五字段规范、10~20字契约、零剧透特征、称谓与嵌套长短词冲突及正文真实命中 |
+| **标准落盘导出** | `$env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py export glossary/glossary_entries.json --json-out glossary/glossary_rules.json --xlsx-out glossary/glossary_rules.xlsx --verify-text glossary/extracted_text.txt --prune-zero-hits` | 联动体检校验，导出带 `rules` 工作表的标准 Excel 与 4 空格缩进的纯净 JSON |
+| **参数快速查询** | `$env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py --help`<br>`$env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py <subcommand> --help` | 秒级获取子命令与参数定义，绝对无需读取源码 |
+
+- 分步子命令（`extract`, `mine`, `verify`）与外置停用词扩展参见：**[工具链命令行手册](./references/cli_manual.md)**。
 
 ---
 

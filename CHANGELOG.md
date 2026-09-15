@@ -3,6 +3,25 @@
 本项目的所有显著变更均记录于此文档。
 版本号遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) 规范。
 
+## [2.5.0] - 2026-09-15
+
+### 🛡️ 架构协议与上下文经济学升级 (Black-Box Tooling & Token Economy)
+- **成熟工具黑盒调用协议 (Black-Box Tooling Protocol)**：
+  - 针对 `scripts/epub_glossary_toolkit.py` 达 1300+ 行代码引起的 Agent 习惯性全量读取、上下文窗口挤占（40KB+ / 次）与记忆稀释问题，在全局规则 `rules/AGENTS.md` 中确立黑盒工具执行硬红线；
+  - 明确将成熟内置脚本定性为“黑盒执行资产”：日常常规业务（抽取、挖掘、剪枝、体检、导出）**严禁使用 `view_file` 盲目读取源码**；
+  - 确立读码边界：仅当用户搭档明确下达“修复工具 Bug / 升级重构工具本身”的代码维护指令时，才允许读取该工具的底层源码。
+- **`quality-rule-create/SKILL.md` 指令加固与即用配方内联 (Inline CLI Recipes)**：
+  - 在技能入口显著注入 `🚨【黑盒工具执行红线 · 严禁读取源码】` 警示横幅；
+  - 内联常见 90% 场景的一键流水线、全要素体检与标准落盘导出等标准命令表格，开箱即用，闭眼直接执行；
+  - 确立参数查询降级规约：优先利用控制台原生 `--help`（如 `python <script> <subcommand> --help`）秒级自省，彻底隔绝因查询参数而翻阅源码的诱因。
+
+### ⚡ 工具链与手册同步 (CLI Manual & Toolkit v2.5)
+- 工具链 `epub_glossary_toolkit.py` 升级至 **v2.5**；
+- 更新 `references/cli_manual.md` 为 v2.5 手册，新增黑盒工具与防读码规约章节；
+- 插件包版本正式升级至 `2.5.0`。
+
+---
+
 ## [2.4.0] - 2026-09-15
 
 ### 🚀 核心特性与工作流升级 (Workflow & Tooling Enhancements)

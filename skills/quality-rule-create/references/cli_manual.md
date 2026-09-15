@@ -1,4 +1,4 @@
-# EPUB / 小说专名挖掘工具链命令行手册 (CLI Manual v2.4)
+# EPUB / 小说专名挖掘工具链命令行手册 (CLI Manual v2.5)
 
 本文档为 `@skill(quality-rule-create)` 的核心工具参考，详细说明内置脚本 `scripts/epub_glossary_toolkit.py` 的子命令、参数选项、一键流水线与 `glossary/` 产物规约。
 
@@ -6,10 +6,14 @@
 
 ## 1. 核心红线与环境安全
 
-1. **产物存放路径硬红线**：
+1. **黑盒工具与防读码规约 (Black-Box Tooling & Token Economy)**：
+   - 本工具链已实现零外部重型依赖与自包含闭环，代码量超 1300 行。
+   - **日常提取、挖掘、体检与导出任务严禁使用 `view_file` 全量阅读其源码**，杜绝大额上下文窗口浪费。
+   - 如需确认具体子命令参数，直接运行 `python <script> <subcommand> --help` 即可；仅在搭档明确指令“修改/升级工具底层代码”时方可阅读源码。
+2. **产物存放路径硬红线**：
    - 所有生成的纯文本、挖掘候选集 JSON、初稿草案、全简称消歧配置与导出的 XLSX/JSON 术语表，**默认且必须存放于工程根目录的 `glossary/` 文件夹**。
    - 工具脚本已默认内置自动路径规约（`[GLOSSARY DIRECTORY]`），防止中间产物散落。
-2. **环境与管道防御规范 (Windows 编码加固)**：
+3. **环境与管道防御规范 (Windows 编码加固)**：
    - **推荐命令前缀**：在 Windows pwsh 下运行 Python 任务时，前置注入环境变量：
      ```powershell
      $env:PYTHONUTF8=1; python <script_path> ...

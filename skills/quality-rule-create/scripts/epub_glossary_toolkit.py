@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-EPUB Glossary Toolkit for LinguaGacha & Antigravity (v2.4)
+EPUB Glossary Toolkit for LinguaGacha & Antigravity (v2.5)
 ===========================================================
 专为泛二次元日文轻小说/EPUB 文本设计的实体挖掘、全简称联动消歧、笔误智能聚类与 LinguaGacha 标准格式导出工具链。
 纯 Python 标准库实现抽取与挖掘（导出 Excel 需 openpyxl，无依赖时降级提示）。
@@ -1252,7 +1252,7 @@ def run_pipeline(epub_path, output_dir=None, min_freq=2, with_snippets=True, sto
     }
 
 def main():
-    parser = argparse.ArgumentParser(description="EPUB Glossary Extraction & Export Toolkit for LinguaGacha (v2.4)")
+    parser = argparse.ArgumentParser(description="EPUB Glossary Extraction & Export Toolkit for LinguaGacha (v2.5)")
     subparsers = parser.add_subparsers(dest="command", help="子命令")
 
     # pipeline
