@@ -1,4 +1,4 @@
-# EPUB / 小说专名挖掘工具链命令行手册 (CLI Manual v2.2)
+# EPUB / 小说专名挖掘工具链命令行手册 (CLI Manual v2.3)
 
 本文档为 `@skill(quality-rule-create)` 的核心工具参考，详细说明内置脚本 `scripts/epub_glossary_toolkit.py` 的子命令、参数选项、一键流水线与 `glossary/` 产物规约。
 
@@ -28,11 +28,16 @@
 $env:PYTHONUTF8=1; python .agents/plugins/lingua-Antigravity/skills/quality-rule-create/scripts/epub_glossary_toolkit.py pipeline <input.epub> [-o <out_dir>] [--min-freq 2]
 ```
 
-### 自动化执行链 (v2.2)
+### 自动化执行链 (v2.3)
 1. **全本抽取 (`extract`)**：解析 EPUB OPF 元数据，按自然数章节精准排序，清洗 HTML 标签与 Ruby 注音假名，导出纯文本至 `glossary/extracted_text.txt`；
-2. **深度挖掘与子串抑制 (`mine` & `prune`)**：执行片假名复合词、日汉混合中点全名、书名号设定词、ACG 后缀及人名尊称聚类；内置**算法级子串包含抑制（Sub-string Containment Pruning）**，自动剔除包含率 $\ge 95\%$ 的词尾机械切片（彻底杜绝类似 `シャーベリア` 产生假简称 `リア` 的问题）；
+2. **深度挖掘与三层剪枝防御 (`mine` & `prune`)**：
+   - 执行片假名复合词、日汉混合中点全名、书名号设定词、ACG 后缀及人名尊称聚类；
+   - **第一层：日常外来语与通识社团免录防御**：自动拦截 `クラス`, `ピアノ`, `ナイフ`, `スマホ` 等日常外来语，以及 `新聞部`, `生徒会`, `不思議調査隊`, `七不思議` 等下游 LLM 原生已知词；书名号自动过滤口语对话长句；
+   - **第二层：算法级片假名子串包含抑制（Sub-string Containment Pruning）**：自动剔除包含率 $\ge 95\%$ 的机械切片（根治 `シャーベリア` 产生伪简称 `リア`）；
+   - **第三层：算法级长短实体修饰嵌套去重（Nested Entity Long-Short Pruning）**：自动识别并剔除带有普通限定修饰/场所前缀的长词（如 `私立大園高校` 剪枝保留 `大園高校`、`理科室の濃硫酸女` 剪枝保留 `濃硫酸女`）；
+   - **第四层：人名敬称派生剥离剪枝（Honorific Variant Pruning）**：自动剥离并拦截 `日向君`、`金森先生`、`木枯先輩` 等派生敬称称呼，确保仅保留核心人名实体；
 3. **独立简称联动 (`link`)**：精准统计片假名作为独立词的频次，生成 `Suggested Pairs` 消歧候选模板；
-4. **原生五字段草案直出 (`draft`)**：自动组装开箱即用的 LinguaGacha 五字段标准草案 `glossary/glossary_draft_entries.json`，用户与 Agent 无需手写临时脚本转换；
+4. **原生五字段草案直出 (`draft`)**：自动组装极简高价值的 LinguaGacha 五字段标准草案 `glossary/glossary_draft_entries.json`（默认 info 精简规范，零剧透）；
 5. **审阅报告 (`report`)**：自动生成结构化 Markdown 报告 `glossary/glossary_pipeline_report.md`，供搭档一览全局。
 
 ---

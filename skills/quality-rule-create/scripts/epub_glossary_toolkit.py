@@ -41,19 +41,50 @@ GENERIC_STOPWORDS = {
     "二人", "仲間", "人間", "大人", "子供", "男", "女", "声", "姿", "顔", "目",
     "手", "足", "頭", "心", "時", "日", "年", "前", "後", "中", "上", "下", "先", "方",
     "同じ", "色んな", "様々な", "特別", "最初", "最後", "相手", "場所", "世界",
-    "性能", "威力", "属性", "魔法", "魔術", "技術", "効果", "時間", "瞬間", "理由"
+    "性能", "威力", "属性", "魔法", "魔術", "技術", "効果", "時間", "瞬間", "理由",
+    # 学校通识社团与大模型已知通识词（下游LLM可稳定独立翻译，无需专名术语表控制）
+    "新聞部", "新聞", "生徒会", "陸上部", "陸上", "吹奏楽部", "吹奏楽", "演劇部", "演劇",
+    "放送部", "美術部", "茶道部", "華道部", "写真部", "剣道部", "柔道部", "弓道部", "水泳部",
+    "オカルト研究会", "オカルト研究", "オカルト部", "研究会", "オカルト",
+    "不思議調査隊", "調査隊", "七不思議", "部活", "委員会", "怪談", "都市伝説"
 }
 
+# 常见修饰限定前缀（用于长短词嵌套剪枝与修饰短语防御）
 GENERIC_PREFIXES = (
     "自分", "新しい", "知らない", "私の", "僕の", "俺の", "あなたの", "彼の", "彼女の",
     "誰かの", "別の", "ある", "この", "その", "あの", "どの", "小さな", "大きな",
-    "魔法科一年", "魔術科二年", "魔法科", "魔術科"
+    "魔法科一年", "魔術科二年", "魔法科", "魔術科",
+    # 学校、机构与设施常见修饰前缀
+    "私立", "市立", "県立", "都立", "府立", "国立", "本校の", "旧", "新", "附属",
+    # 方位与场所限定修饰前缀
+    "理科室の", "音楽室の", "教室の", "図書室の", "屋上の", "体育館の", "校庭の", "正門の", "階段の", "踊り場の"
 )
 
-# 尊称后缀集合（用于姓名清洗与独立边界识别）
+# 现代日常通用片假名停用词（下游大模型100%已知，严禁充当专有名词收录）
+COMMON_KATAKANA_STOPWORDS = {
+    "クラス", "ピアノ", "ナイフ", "セキュリティ", "エネルギー", "ゴム", "シャツ", "スマホ",
+    "ダイエット", "ノート", "ペン", "テーブル", "ドア", "ベッド", "ソファー", "トイレ",
+    "シャワー", "タオル", "カップ", "グラス", "フォーク", "スプーン", "ポケット", "バッグ",
+    "カバン", "バス", "タクシー", "トラック", "バイク", "ビル", "アパート", "マンション",
+    "ホテル", "レストラン", "カフェ", "コンビニ", "スーパー", "テレビ", "ラジオ", "カメラ",
+    "パソコン", "インターネット", "メール", "メッセージ", "ニュース", "スポーツ", "ゲーム",
+    "ルール", "タイプ", "グループ", "チーム", "メンバー", "リーダー", "センター", "コーナー",
+    "ポイント", "チャンス", "ピンチ", "トラブル", "ショック", "ストレス", "テンション",
+    "リズム", "バランス", "デザイン", "スタイル", "イメージ", "アイデア", "プラン",
+    "プロジェクト", "システム", "データ", "ファイル", "コード", "チェック", "テスト",
+    "クリア", "スタート", "ゴール", "ストップ", "ステップ", "レベル", "ランク", "サイズ",
+    "カラー", "マーク", "サイン", "コメント", "アドバイス", "サポート", "サービス",
+    "プレゼント", "イベント", "パーティー", "コンサート", "ライブ", "ステージ", "シーン",
+    "ストーリー", "テーマ", "タイトル", "ラスト", "トップ", "ベスト", "ワースト", "フリー",
+    "オープン", "クローズ", "ライト", "ランプ", "スイッチ", "ボタン", "カーテン", "スリッパ",
+    "スニーカー", "スーツ", "コート", "ネクタイ", "ハンカチ", "ティッシュ", "タバコ", "ライター",
+    "マッチ", "ボックス", "ケース", "プラスチック", "ガラス", "スチール", "コンクリート"
+}
+
+# 尊称与常见人名后缀集合（用于姓名清洗、独立边界识别与派生敬称剪枝）
 HONORIFIC_SUFFIXES = (
-    "さん", "様", "さま", "君", "くん", "ちゃん", "先生", "卿", "親方", "大旦那",
-    "姐さん", "大叔父", "大叔母", "女将", "殿下", "陛下", "皇子", "皇女", "王女"
+    "さん", "様", "さま", "君", "くん", "ちゃん", "先生", "先輩", "後輩", "殿", "卿",
+    "親方", "大旦那", "姐さん", "大叔父", "大叔母", "女将", "殿下", "陛下", "皇子", "皇女", "王女"
 )
 
 # 独立语法边界标志字符（日文助词、标点、括号与换行空格）
@@ -261,6 +292,122 @@ def prune_contained_substrings(katakana_candidates, full_names, text, threshold=
         print(f"[INFO] 算法级子串抑制：成功剔除 {suppressed_count} 个伴生片假名切片（包含率 >= {threshold*100:.0f}%）。")
     return pruned
 
+def prune_honorific_variants(candidates, text=None):
+    """
+    人名敬称与常规称谓派生抑制器 (Honorific Variant Pruning):
+    - 识别形如 '日向君'、'金森先生'、'木枯先輩'、'本庄さん'、'大園さん' 等条目；
+    - 若其词根（如 '日向', '金森', '木枯', '本庄', '大園'）在候选池中已存在，或在正文中作为独立实体高频出现（>=2次）；
+    - 判定该条目为基于核心人名的常规称谓语法派生词，予以剔除，确保仅收录核心人名；
+    - 下游 LLM 将根据语境和人际关系自动且自然地翻译称谓后缀。
+    """
+    if not candidates:
+        return []
+
+    # 提取所有候选的 surface 集合
+    all_surfaces = set()
+    for item in candidates:
+        s = item["surface"] if isinstance(item, dict) else str(item)
+        if s:
+            all_surfaces.add(s)
+
+    pruned = []
+    suppressed = []
+
+    for item in candidates:
+        s = item["surface"] if isinstance(item, dict) else str(item)
+
+        is_variant = False
+        for sfx in HONORIFIC_SUFFIXES:
+            if s.endswith(sfx) and len(s) > len(sfx):
+                stem = s[:-len(sfx)].strip()
+                # 1. stem 本身在候选词中
+                if stem in all_surfaces:
+                    is_variant = True
+                    break
+                # 2. stem 为某个全名（如 '本庄怜'）的前缀姓氏（长度 >= 2）
+                if len(stem) >= 2 and any(other != s and other.startswith(stem) for other in all_surfaces):
+                    is_variant = True
+                    break
+                # 3. stem 在正文中独立存在且频次 >= 2
+                if text and len(stem) >= 2 and text.count(stem) >= 2:
+                    is_variant = True
+                    break
+
+        if is_variant:
+            suppressed.append(s)
+            continue
+
+        pruned.append(item)
+
+    if suppressed:
+        print(f"[INFO] 称谓剪枝抑制：成功剔除 {len(suppressed)} 个派生人名敬称条目 (如: {', '.join(suppressed[:5])})。")
+    return pruned
+
+def prune_nested_entities(candidates, text=None):
+    """
+    算法级长短实体修饰嵌套去重 (Nested Entity Long-Short Pruning):
+    解决如 '私立大園高校' vs '大園高校'、'理科室の濃硫酸女' vs '濃硫酸女'、'大園高校不思議調査隊' vs '大園高校' 等问题。
+    1. 收集所有候选词列表；
+    2. 当短词 S 是长词 L 的真子串 (S in L and len(L) > len(S)) 时：
+       a. 检查 L 剥离 S 后的修饰残差：
+          - 若前缀残差属于 GENERIC_PREFIXES (如 '私立', '市立', '理科室の', '旧', '音楽室の' 等)；
+          - 或后缀残差属于通识社团机构词 (如 '不思議調査隊', '調査隊', '研究会' 等)；
+          - 或短词 S 的出现频次显著高于长词 L (如 count(S) >= count(L) 且 count(S) >= 2)；
+       b. 判定长词 L 为修饰扩展冗余，予以剔除，仅保留核心专名 S。
+    """
+    if not candidates:
+        return []
+
+    item_dict = {}
+    for item in candidates:
+        s = item["surface"] if isinstance(item, dict) else str(item)
+        if s:
+            item_dict[s] = item
+
+    all_surfaces = sorted(list(item_dict.keys()), key=lambda x: len(x))
+    suppressed = set()
+
+    for i in range(len(all_surfaces)):
+        s_short = all_surfaces[i]
+        if s_short in suppressed:
+            continue
+
+        for j in range(i + 1, len(all_surfaces)):
+            s_long = all_surfaces[j]
+            if s_long in suppressed:
+                continue
+
+            if s_short in s_long:
+                prefix = ""
+                suffix = ""
+                idx = s_long.find(s_short)
+                if idx > 0:
+                    prefix = s_long[:idx]
+                if idx + len(s_short) < len(s_long):
+                    suffix = s_long[idx + len(s_short):]
+
+                is_redundant = False
+                # 规则 1：前缀是常见修饰限定词（如 私立、市立、理科室の 等）
+                if prefix and any(prefix == pfx or prefix.endswith(pfx) for pfx in GENERIC_PREFIXES):
+                    is_redundant = True
+                # 规则 2：后缀是通识组织/调查队词
+                elif suffix and suffix in GENERIC_STOPWORDS:
+                    is_redundant = True
+                # 规则 3：若前缀或后缀仅包含普通接续词（如“の”加简单名词）且短词频次显著更高
+                elif prefix.endswith("の") or suffix.startswith("の"):
+                    c_short = item_dict[s_short].get("count", 0) if isinstance(item_dict[s_short], dict) else 1
+                    c_long = item_dict[s_long].get("count", 0) if isinstance(item_dict[s_long], dict) else 1
+                    if c_short >= c_long:
+                        is_redundant = True
+
+                if is_redundant:
+                    suppressed.add(s_long)
+
+    pruned = [item_dict[s] for s in all_surfaces if s not in suppressed]
+    if suppressed:
+        print(f"[INFO] 嵌套长短词抑制：成功剔除 {len(suppressed)} 个修饰扩展冗余长词 (如: {', '.join(list(suppressed)[:5])})。")
+    return pruned
+
 def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
     """
     深度多模式日文实体聚类挖掘引擎（v2.2 标准契约归一版）：
@@ -288,11 +435,13 @@ def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
     def is_generic_noise(word):
         if not word or len(word) < 2:
             return True
-        if word in GENERIC_STOPWORDS:
+        if word in GENERIC_STOPWORDS or word in COMMON_KATAKANA_STOPWORDS:
             return True
         for pfx in GENERIC_PREFIXES:
             if word.startswith(pfx):
-                return True
+                sub = word[len(pfx):].strip()
+                if not sub or sub in GENERIC_STOPWORDS or sub in COMMON_KATAKANA_STOPWORDS:
+                    return True
         return False
 
     def clean_name_surface(raw_name):
@@ -325,7 +474,7 @@ def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
             continue
         # 过滤普通泛词中点组合（如“性能・威力”）
         parts = w.split("・")
-        if any(p in GENERIC_STOPWORDS for p in parts):
+        if any(p in GENERIC_STOPWORDS or p in COMMON_KATAKANA_STOPWORDS for p in parts):
             continue
         if not is_generic_noise(w):
             cleaned_dot_counts[w] += c
@@ -334,7 +483,7 @@ def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
         if c >= 1:
             results["full_names_with_dot"].append(make_entry(w, c, "person_dot"))
 
-    # 2. 纯片假名单词与复合词挖掘
+    # 2. 纯片假名单词与复合词挖掘（前置过滤日常外来语）
     katakana_pat = re.compile(r'[\u30A1-\u30FA\u30FC]{2,}(?:・[\u30A1-\u30FA\u30FC]+)*')
     katakana_counts = Counter(katakana_pat.findall(text))
     raw_katakana = [
@@ -348,13 +497,24 @@ def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
         raw_katakana, results["full_names_with_dot"], text, threshold=0.95, min_independent_freq=2
     )
 
-    # 3. 专名号/书名号关键词挖掘 『...』
-    single_brackets = Counter(re.findall(r'『([^』]{2,30})』', text))
-    results["bracketed_terms"] = [
-        make_entry(w, c, "bracket")
-        for w, c in single_brackets.most_common(150)
-        if not any(punct in w for punct in ["！", "？", "、", "。"]) and not is_generic_noise(w) and c >= 1
-    ]
+    # 3. 专名号/书名号关键词挖掘 『...』（强化过滤日常对话长句）
+    bracket_pat = re.compile(r'『([^』]{2,30})』')
+    bracket_counts = Counter(bracket_pat.findall(text))
+    dialogue_endings = re.compile(r'(?:だよ|なよ|よね|わよ|のね|かしら|てください|ます|です|ないで|たいな|そうだ|うーん|ああ|ええ|はい|いいえ|じゃん|だね|もん)$')
+    valid_brackets = []
+    for w, c in bracket_counts.most_common(150):
+        if c < 2:
+            continue
+        if any(punct in w for punct in ["！", "？", "、", "。", "…", "‥", "～", "~", "!", "?", "「", "」", "（", "）", " "]):
+            continue
+        if is_generic_noise(w):
+            continue
+        if dialogue_endings.search(w):
+            continue
+        if len(w) > 10 and any(p in w for p in ["は", "が", "を", "に", "で"]):
+            continue
+        valid_brackets.append(make_entry(w, c, "bracket"))
+    results["bracketed_terms"] = valid_brackets
 
     # 4. ACG 组织、地理、阶级、系统后缀特征识别
     suffix_categories = {
@@ -369,19 +529,25 @@ def mine_entities(text, min_freq=2, with_snippets=False, snippet_count=3):
         for w, c in found.most_common(60):
             if c >= min_freq and not is_generic_noise(w):
                 valid_items.append(make_entry(w, c, cat_tag))
-        results["named_entities_by_suffix"][cat_key] = valid_items
+        # 执行嵌套修饰剪枝
+        results["named_entities_by_suffix"][cat_key] = prune_nested_entities(valid_items, text)
 
-    # 5. 人名称谓识别 (前缀 + 尊称)
+    # 5. 人名称谓识别 (前缀 + 尊称，自动剥离尊称后缀并过滤纯称谓)
     honorific_pat = re.compile(
         r'([A-Za-z\u3040-\u30ff\u4e00-\u9fa5]{2,10})'
-        r'(?:さん|様|さま|君|くん|ちゃん|先生|卿|親方|大旦那|姐さん|大叔父|大叔母|女将)'
+        r'(?:さん|様|さま|君|くん|ちゃん|先生|先輩|後輩|殿|卿|親方|大旦那|姐さん|大叔父|大叔母|女将)'
     )
     char_counts = Counter(honorific_pat.findall(text))
-    results["character_candidates"] = [
-        make_entry(w, c, "honorific")
-        for w, c in char_counts.most_common(100) 
-        if not is_generic_noise(w) and c >= min_freq
-    ]
+    valid_chars = []
+    for w, c in char_counts.most_common(100):
+        if c < min_freq:
+            continue
+        cleaned_w = clean_name_surface(w)
+        if len(cleaned_w) < 2 or is_generic_noise(cleaned_w):
+            continue
+        valid_chars.append(make_entry(cleaned_w, c, "honorific"))
+    # 执行人名去重与嵌套剪枝
+    results["character_candidates"] = prune_nested_entities(valid_chars, text)
 
     return results
 
@@ -453,31 +619,39 @@ def generate_glossary_draft(mined_data, name_pairs):
     # 1. 优先加入主要人物中点全名
     for item in mined_data.get("full_names_with_dot", []):
         s = item["surface"]
-        add_entry(s, f"角色全称；待补充身份定位与正式译名")
+        add_entry(s, "待定性别，角色定位")
 
     # 2. 加入建议的消歧简称条目
     for p in name_pairs:
         s = p["short_name"]
-        add_entry(s, p["suggested_info"])
+        add_entry(s, f"常用简称；对应全名 {p['full_name']}")
 
     # 3. 加入书名号核心设定/招式词
     for item in mined_data.get("bracketed_terms", []):
         if item["count"] >= 2:
             s = item["surface"]
-            add_entry(s, "核心设定/招式魔法；待补充具体属性")
+            add_entry(s, "核心设定/招式")
 
-    # 4. 加入高频片假名专名（未被全名覆盖的前排专名）
+    # 4. 加入高频片假名专名（未被全名覆盖的前排专名，排查日常外来语）
     for item in mined_data.get("katakana_compounds", [])[:30]:
         s = item["surface"]
-        if item["count"] >= 5:
-            add_entry(s, "专有名词/高频术语；待核实分类与身份定位")
+        if item["count"] >= 5 and s not in COMMON_KATAKANA_STOPWORDS:
+            add_entry(s, "专有名词/术语")
 
-    # 5. 加入组织与重要地名
+    # 5. 加入组织与重要地名（排查通识社团词）
     for org in mined_data.get("named_entities_by_suffix", {}).get("org", [])[:10]:
-        add_entry(org["surface"], "组织/设施；待补充正式定名")
+        s = org["surface"]
+        if s not in GENERIC_STOPWORDS:
+            add_entry(s, "组织名")
 
     for geo in mined_data.get("named_entities_by_suffix", {}).get("geo", [])[:10]:
-        add_entry(geo["surface"], "地名/区域；待补充正式定名")
+        s = geo["surface"]
+        if s not in GENERIC_STOPWORDS:
+            add_entry(s, "地名/设施")
+
+    # 6. 对草案条目执行全局称谓变体过滤与长短词嵌套剪枝
+    draft_entries = prune_honorific_variants(draft_entries)
+    draft_entries = prune_nested_entities(draft_entries)
 
     return draft_entries
 
@@ -486,10 +660,15 @@ def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_veri
     按照 LinguaGacha 五字段标准契约校验并导出术语表。
     强制遵循产物收纳于 glossary/ 目录规范。
     支持 prune_zero_hits 自动拦截未命中幽灵词条。
+    强化 4 大质量硬约束拦截：常规敬称过滤、长短词修饰去重、通识词告警与 info 长度体检。
     """
     cleaned = []
     seen = set()
     pruned = []
+    quality_warnings = []
+
+    # 预扫描所有 src 用于变体与长短词冲突检测
+    all_srcs = {item.get("src", "").strip() for item in entries if item.get("src", "").strip()}
 
     for idx, item in enumerate(entries):
         src = item.get("src", "").strip()
@@ -504,6 +683,29 @@ def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_veri
         if src in seen:
             print(f"[WARN] 重复条目 '{src}'，已跳过后续重复项", file=sys.stderr)
             continue
+
+        # 质量核验 1：常规人名敬称称谓拦截（如 日向君、金森先生 等）
+        is_honorific = False
+        for sfx in HONORIFIC_SUFFIXES:
+            if src.endswith(sfx) and len(src) > len(sfx):
+                stem = src[:-len(sfx)].strip()
+                if stem in all_srcs:
+                    msg = f"[QUALITY REDLINE] 发现常规敬称派生条目 '{src}' (词根 '{stem}' 已在术语表中)，严禁机械入表控制！"
+                    quality_warnings.append(msg)
+                    print(f"[WARN] {msg}", file=sys.stderr)
+                    is_honorific = True
+                    break
+
+        # 质量核验 2：通识社团与大模型已知词提示
+        if src in GENERIC_STOPWORDS or src in COMMON_KATAKANA_STOPWORDS:
+            msg = f"[QUALITY REDLINE] 发现下游 LLM 可稳定翻译的通识词/日常外来语 '{src}'，建议免录以节省上下文。"
+            quality_warnings.append(msg)
+            print(f"[WARN] {msg}", file=sys.stderr)
+
+        # 质量核验 3：info 字段长度与剧透排查（超过 35 字符提示精简）
+        if len(info) > 35:
+            msg = f"[QUALITY INFO] 条目 '{src}' 的 info 说明过长 ({len(info)} 字符)，建议精简为性别/身份/动作等高价值翻译提示，严禁剧情剧透！"
+            quality_warnings.append(msg)
 
         if text_to_verify and src not in text_to_verify:
             if prune_zero_hits:
@@ -525,6 +727,8 @@ def export_linguagacha(entries, output_json=None, output_xlsx=None, text_to_veri
 
     if pruned:
         print(f"[INFO] 自动清理完成：共剔除 {len(pruned)} 条未命中幽灵词条: {pruned}")
+    if quality_warnings:
+        print(f"[QUALITY SUMMARY] 共检出 {len(quality_warnings)} 项质量规范优化建议，详情请查看终端警告。")
     print(f"[INFO] 成功校验 {len(cleaned)} 条有效术语。")
 
     def normalize_output_path(p, default_filename):
