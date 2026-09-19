@@ -3,6 +3,13 @@
 本项目的所有显著变更均记录于此文档。
 版本号遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) 规范。
 
+## [2.6.0] - 2026-09-19
+
+### 新增功能 (Features)
+- **原生支持 LinguaGacha `.lg` 工程文件**：
+  - 新增 `scripts/lg_toolkit.py`，支持通過 SQLite3 直接讀取 `.lg` 文件中的待翻譯條目與術語表。
+  - 完美打通 LinguaGacha GUI 閉環工作流：`GUI 導入建檔` -> `.lg` -> `Antigravity 翻譯` -> `.lg` -> `GUI 校對導出`。
+
 ## [2.5.0] - 2026-09-15
 
 ### 🛡️ 架构协议与上下文经济学升级 (Black-Box Tooling & Token Economy)
